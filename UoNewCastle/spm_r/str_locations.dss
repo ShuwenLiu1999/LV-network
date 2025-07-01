@@ -1,0 +1,6 @@
+! chosen manually using master
+! ID here then replace in xxxx
+
+new load.str_9112626_1 bus1=9112626.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.str_9112626_2 bus1=9112626.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.str_9112626_3 bus1=9112626.3 kv=0.2396003617136947 phases=1 kW=0 pf=1

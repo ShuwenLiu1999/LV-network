@@ -1,0 +1,3 @@
+!New transformer.Dist_transformer_14216629_9089776 windings=2 phases=3 buses=(sourcebus 9089776) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=12 ppm_antifloat=0 %noloadloss=0 %imag=0
+!New transformer.Dist_transformer_14216629_9089776 windings=2 phases=3 buses=(sourcebusZ 9089776) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=12 ppm_antifloat=0 %noloadloss=0 %imag=0
+New transformer.Dist_transformer_14216629_9089776 windings=2 phases=3 buses=(sourcebusZ 9089776) conns=(delta wye) kvs=(11 0.415) kvas=(50 50) XHL=4.9 ppm_antifloat=0 %noloadloss=0 %imag=0

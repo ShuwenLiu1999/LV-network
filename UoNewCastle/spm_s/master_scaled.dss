@@ -1,0 +1,48 @@
+clear
+
+! withington / 11.03
+!New Circuit.ckt_10350026 basekv=11 pu=1 bus1=sourcebus basefreq=50 phases=3 Angle=0 ISC3=99999999999 Isc1=99999999999
+New Circuit.ckt_10350026 basekv=11 pu=1.01 bus1=sourcebus basefreq=50 phases=3 Angle=0 ISC3=99999999999 Isc1=99999999999
+set voltagebases=(11.0,0.400)
+
+!impedance copied from EU LV test feeder
+new line.sourceZ bus1=SourceBus bus2=SourceBusZ phases=3 R1=0.51344 X1=2.0537 R0=1203.7 X0=3611
+
+
+redirect linecodes_dsuite_scaled.dss
+
+!redirect lines_spm_s_scaled.dss
+!redirect lines_lbs_spm_s_scaled.dss
+redirect lines_lbs_spm_s_scaled_mod.dss
+redirect transformers_spm_s.dss
+!redirect transformers_spm_s_original.dss.dss ! for debugging transformers / plotting
+redirect loads_spm_s.dss
+
+redirect statcom_locations.dss
+redirect sop_locations.dss
+redirect str_locations.dss
+
+batchedit load.load* kw=1.0 kvar=0.0
+
+batchedit load.statcom_* kw=0.0 kvar=-1.0
+batchedit load.sop_a* kw=0.0 kvar=-0.3
+batchedit load.sop_b* kw=0.0 kvar=-0.3
+batchedit load.sop_x* kw=0.0 kvar=-0.2
+batchedit load.str_* kw=0.0 kvar=-0.08
+
+calcv
+buscoords opendss_xy_spm_s_scaled.csv
+
+new energymeter.m1 element=line.11608030
+
+solve
+
+!show overloads
+!show isolated
+
+set normvmaxpu=1.10
+set normvminpu=0.94
+set marktransformers=yes
+
+!plot
+!plot profile ph=all

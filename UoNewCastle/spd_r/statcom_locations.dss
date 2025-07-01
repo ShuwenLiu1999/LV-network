@@ -1,0 +1,32 @@
+! chosen manually using master
+!17439336
+!14522889
+!13212201
+!13221537
+!!12219819
+!11022643
+
+new load.statcom_17439336_1 bus1=17439336.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17439336_2 bus1=17439336.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17439336_3 bus1=17439336.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_14522889_1 bus1=14522889.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_14522889_2 bus1=14522889.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_14522889_3 bus1=14522889.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_13212201_1 bus1=13212201.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_13212201_2 bus1=13212201.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_13212201_3 bus1=13212201.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_13221537_1 bus1=13221537.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_13221537_2 bus1=13221537.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_13221537_3 bus1=13221537.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+!new load.statcom_12219819_1 bus1=12219819.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+!new load.statcom_12219819_2 bus1=12219819.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+!new load.statcom_12219819_3 bus1=12219819.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+!new load.statcom_11022643_1 bus1=11022643.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+!new load.statcom_11022643_2 bus1=11022643.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+!new load.statcom_11022643_3 bus1=11022643.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+

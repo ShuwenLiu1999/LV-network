@@ -1,0 +1,42 @@
+clear
+
+! llanderfel / 11.05
+New Circuit.ckt_20277986 basekv=11 pu=1.01 bus1=sourcebus basefreq=50 phases=3 Angle=0 ISC3=99999999999 Isc1=99999999999
+set voltagebases=(11.0,0.400)
+
+!impedance copied from EU LV test feeder
+new line.sourceZ bus1=SourceBus bus2=SourceBusZ phases=3 R1=0.51344 X1=2.0537 R0=1203.7 X0=3611
+
+redirect linecodes_dsuite_scaled.dss
+
+!redirect lines_spm_r_scaled.dss
+redirect lines_lbs_spm_r_scaled.dss
+redirect transformers_spm_r.dss
+redirect loads_spm_r.dss
+
+redirect statcom_locations.dss
+redirect sop_locations.dss
+redirect str_locations.dss
+
+batchedit load.load* kw=1.0 kvar=0.0
+
+batchedit load.statcom_* kw=0.0 kvar=-1.0
+batchedit load.sop* kw=0.0 kvar=-0.3
+batchedit load.str_* kw=0.0 kvar=-0.08
+
+calcv
+buscoords opendss_xy_spm_r_scaled.csv
+
+new energymeter.m1 element=transformer.Dist_transformer_20277986_9112626
+
+solve
+
+
+set normvmaxpu=1.10
+set normvminpu=0.94
+set marktransformers=yes
+
+!show overloads
+
+!plot
+!plot profile ph=all

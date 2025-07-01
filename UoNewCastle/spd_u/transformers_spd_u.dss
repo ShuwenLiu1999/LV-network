@@ -1,0 +1,13 @@
+!!New transformer.Dist_transformer_10148955_9043330 windings=2 phases=3 buses=(sourcebus 9043330) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=12 ppm_antifloat=0 %noloadloss=0 %imag=0
+!New transformer.Dist_transformer_10149015_9108352 windings=2 phases=3 buses=(sourcebus 9108352) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=12 ppm_antifloat=0 %noloadloss=0 %imag=0
+!New transformer.Dist_transformer_14660774_9052883 windings=2 phases=3 buses=(sourcebus 9052883) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=12 ppm_antifloat=0 %noloadloss=0 %imag=0
+!New transformer.Dist_transformer_14787617_9117168 windings=2 phases=3 buses=(sourcebus 9117168) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=12 ppm_antifloat=0 %noloadloss=0 %imag=0
+
+New transformer.Dist_transformer_10148955_9043330 windings=2 phases=3 buses=(sourcebusZ 9043330) conns=(delta wye) kvs=(11 0.415) kvas=(1000 1000) XHL=4.9 ppm_antifloat=0 %noloadloss=0 %imag=0
+
+
+!New transformer.Dist_transformer_10148955_9043330 windings=2 phases=3 buses=(sourcebusZ 9043330) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=4.9 ppm_antifloat=0 %noloadloss=0 %imag=0
+New transformer.Dist_transformer_10149015_9108352 windings=2 phases=3 buses=(sourcebusZ 9108352) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=4.9 ppm_antifloat=0 %noloadloss=0 %imag=0
+New transformer.Dist_transformer_14660774_9052883 windings=2 phases=3 buses=(sourcebusZ 9052883) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=4.9 ppm_antifloat=0 %noloadloss=0 %imag=0
+New transformer.Dist_transformer_14787617_9117168 windings=2 phases=3 buses=(sourcebusZ 9117168) conns=(delta wye) kvs=(11 0.415) kvas=(500 500) XHL=4.9 ppm_antifloat=0 %noloadloss=0 %imag=0
+

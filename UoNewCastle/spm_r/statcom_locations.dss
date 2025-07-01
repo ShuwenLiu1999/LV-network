@@ -1,0 +1,33 @@
+! chosen manually using master
+! ID here then replace in xxxx
+!17582388
+!17582392
+!17582398
+!17382325
+!17582385
+!17382315 ! added later on
+
+new load.statcom_17582388_1 bus1=17582388.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17582388_2 bus1=17582388.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17582388_3 bus1=17582388.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_17582392_1 bus1=17582392.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17582392_2 bus1=17582392.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17582392_3 bus1=17582392.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_17582398_1 bus1=17582398.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17582398_2 bus1=17582398.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17582398_3 bus1=17582398.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_17382325_1 bus1=17382325.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17382325_2 bus1=17382325.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17382325_3 bus1=17382325.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_17582385_1 bus1=17582385.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17582385_2 bus1=17582385.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17582385_3 bus1=17582385.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_17382315_1 bus1=17382315.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17382315_2 bus1=17382315.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17382315_3 bus1=17382315.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+

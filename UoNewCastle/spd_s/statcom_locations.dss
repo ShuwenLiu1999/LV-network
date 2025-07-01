@@ -1,0 +1,54 @@
+! chosen manually using master
+! ID here then replace in xxxx
+!17855759
+!12969125
+!12934941
+!13435075
+!13435074
+!14756890
+!12958003
+!9369082
+!17874064
+!12725180
+
+
+new load.statcom_17855759_1 bus1=17855759.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17855759_2 bus1=17855759.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17855759_3 bus1=17855759.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_12969125_1 bus1=12969125.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_12969125_2 bus1=12969125.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_12969125_3 bus1=12969125.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_12934941_1 bus1=12934941.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_12934941_2 bus1=12934941.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_12934941_3 bus1=12934941.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_13435075_1 bus1=13435075.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_13435075_2 bus1=13435075.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_13435075_3 bus1=13435075.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_13435074_1 bus1=13435074.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_13435074_2 bus1=13435074.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_13435074_3 bus1=13435074.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_12958003_1 bus1=12958003.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_12958003_2 bus1=12958003.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_12958003_3 bus1=12958003.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_9369082_1 bus1=9369082.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_9369082_2 bus1=9369082.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_9369082_3 bus1=9369082.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_17874064_1 bus1=17874064.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17874064_2 bus1=17874064.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_17874064_3 bus1=17874064.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_12725180_1 bus1=12725180.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_12725180_2 bus1=12725180.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_12725180_3 bus1=12725180.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.statcom_14756890_1 bus1=14756890.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_14756890_2 bus1=14756890.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.statcom_14756890_3 bus1=14756890.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+

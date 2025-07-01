@@ -1,0 +1,21 @@
+! choose manually using master - presently none for this network
+!12934917 ! 1-sided
+!13363295 ! 1-sided
+!12934945 ! 1-sided
+!17655571 ! 1-sided
+
+new load.sop_x1_12934917_1 bus1=12934917.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.sop_x1_12934917_2 bus1=12934917.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.sop_x1_12934917_3 bus1=12934917.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.sop_x2_13363295_1 bus1=13363295.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.sop_x2_13363295_2 bus1=13363295.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.sop_x2_13363295_3 bus1=13363295.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.sop_x3_12934945_1 bus1=12934945.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.sop_x3_12934945_2 bus1=12934945.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.sop_x3_12934945_3 bus1=12934945.3 kv=0.2396003617136947 phases=1 kW=0 pf=1
+
+new load.sop_x4_17655571_1 bus1=17655571.1 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.sop_x4_17655571_2 bus1=17655571.2 kv=0.2396003617136947 phases=1 kW=0 pf=1
+new load.sop_x4_17655571_3 bus1=17655571.3 kv=0.2396003617136947 phases=1 kW=0 pf=1

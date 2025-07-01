@@ -1,0 +1,55 @@
+clear
+
+! raffles / 11.01
+New Circuit.dss_navi_power_analysis basekv=11 pu=1.01 bus1=sourcebus basefreq=50 phases=3 Angle=0 ISC3=99999999999 Isc1=99999999999
+set voltagebases=(11.0,0.400)
+
+!impedance copied from EU LV test feeder
+new line.sourceZ bus1=SourceBus bus2=SourceBusZ phases=3 R1=0.51344 X1=2.0537 R0=1203.7 X0=3611
+
+redirect linecodes_dsuite_scaled.dss
+
+!redirect lines_spm_u_scaled.dss
+redirect lines_lbs_spm_u_scaled.dss
+redirect transformers_spm_u.dss
+!redirect transformers_spm_u_original.dss.dss
+redirect loads_spm_u.dss
+
+redirect statcom_locations.dss
+redirect sop_locations.dss
+redirect str_locations.dss
+
+batchedit load.load* kw=1.0 kvar=0.0
+
+batchedit load.statcom_* kw=0.0 kvar=-1.0
+batchedit load.sop_a* kw=0.0 kvar=-0.3
+batchedit load.sop_b* kw=0.0 kvar=-0.3
+batchedit load.sop_x* kw=0.0 kvar=-0.2
+batchedit load.str_* kw=0.0 kvar=-0.08
+
+calcv
+buscoords opendss_xy_spm_u_scaled.csv
+
+new energymeter.m2 element=transformer.Dist_transformer_11532030_9067026 ! probably transformer 2
+
+/*
+!For debugging with transformers_*_original.dss
+!new energymeter.m1 element=transformer.Dist_transformer_11534398_9067036
+!new energymeter.m3 element=transformer.Dist_transformer_10432314_9067607
+!new energymeter.m4 element=transformer.Dist_transformer_14078068_9067610
+!new energymeter.m5 element=transformer.Dist_transformer_20108487_9071358
+!new energymeter.m6 element=transformer.Dist_transformer_20098160_9044497
+*/
+
+solve
+
+
+!show overloads
+
+set normvmaxpu=1.10
+set normvminpu=0.94
+set marktransformers=yes
+
+!plot
+!plot profile ph=all
+

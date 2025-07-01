@@ -1,0 +1,7 @@
+name,bus,p_mw,q_mvar,const_z_percent,const_i_percent,sn_mva,scaling,in_service,type
+Load R1,2,0.19,0.06244998,0.0,0.0,,1.0,True,wye
+Load R11,12,0.01425,0.004683748,0.0,0.0,,1.0,True,wye
+Load R15,16,0.0494,0.016236995,0.0,0.0,,1.0,True,wye
+Load R16,17,0.05225,0.017173744,0.0,0.0,,1.0,True,wye
+Load R17,18,0.03325,0.010928746,0.0,0.0,,1.0,True,wye
+Load R18,19,0.04465,0.014675745,0.0,0.0,,1.0,True,wye
