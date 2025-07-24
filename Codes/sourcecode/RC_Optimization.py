@@ -7,6 +7,92 @@ import os
 
 # This function takes in the parameters for a hybrid heat pump (HHP) operation
 # optimization problem and solve for the solution
+# def optimize_hhp_operation(
+#     R1: float,
+#     C1: float,
+#     g: float,
+#     tariff: pd.DataFrame,
+#     Tout: np.ndarray,
+#     S: np.ndarray,
+#     dt: float,
+#     T0: float,
+#     T_setpoint: np.ndarray,
+#     tol: float | np.ndarray,
+#     COP: float,
+#     etaB: float,
+#     Qhp_max: float,
+#     Qbo_max: float,
+# ) -> pd.DataFrame:
+#     """
+#     Hybrid‐HP dispatch with comfort constraints.
+#     Returns: DataFrame with ['Q_hp','Q_bo','Tin','T_set','T_low','T_high']
+#     """
+#
+#     T = len(tariff)
+#     beta = dt * R1 / (C1 * R1 + dt)
+#
+#     m = gp.Model("hhp_dispatch")
+#     m.Params.OutputFlag = 0
+#
+#     # decision vars
+#     Q_hp = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp")
+#     Q_bo = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo")
+#     Tin  = m.addVars(T, lb=-GRB.INFINITY, name="Tin")
+#
+#     # objective
+#     m.setObjective(
+#         gp.quicksum(
+#             (Q_hp[t]/COP)*tariff['elec_price'].iat[t] +
+#             (Q_bo[t]/etaB)*tariff['gas_price'].iat[t]
+#             for t in range(T)
+#         ),
+#         GRB.MINIMIZE
+#     )
+#
+#     # initial condition
+#     m.addConstr(Tin[0] == T0, name="init_temp")
+#
+#     # dynamics
+#     for t in range(1, T):
+#         m.addConstr(
+#             Tin[t] == Tin[t-1]
+#                       + beta * (
+#                           (Tout[t-1] - Tin[t-1]) / R1
+#                         + Q_hp[t-1]
+#                         + Q_bo[t-1]
+#                         + g * S[t-1]
+#                       ),
+#             name=f"dyn_{t}"
+#         )
+#
+#     # build comfort bands
+#     tol_arr = tol if np.ndim(tol) > 0 else np.full(T, tol)
+#     T_low = np.where(T_setpoint >= 19.0, T_setpoint - tol_arr, 15.0)
+#     T_high = np.where(T_setpoint >= 19.0, T_setpoint + tol_arr, np.nan)  # NaN if no upper bound
+#
+#     for t in range(T):
+#         m.addConstr(Tin[t] >= T_low[t], name=f"tmin_{t}")
+#         if not np.isnan(T_high[t]):
+#             m.addConstr(Tin[t] <= T_high[t], name=f"tmax_{t}")
+#
+#     m.optimize()
+#
+#     if m.Status != GRB.OPTIMAL:
+#         raise RuntimeError(f"Gurobi did not find an optimal solution. Status: {m.Status}")
+#
+#     Qhp_res = np.array([Q_hp[t].X for t in range(T)])
+#     Qbo_res = np.array([Q_bo[t].X for t in range(T)])
+#     Tin_res = np.array([Tin[t].X for t in range(T)])
+#
+#     return pd.DataFrame({
+#         'Q_hp': Qhp_res,
+#         'Q_bo': Qbo_res,
+#         'Tin': Tin_res,
+#         'T_set': T_setpoint,
+#         'T_low': T_low,
+#         'T_high': T_high
+#     }, index=tariff.index)
+
 def optimize_hhp_operation(
     R1: float,
     C1: float,
@@ -22,76 +108,107 @@ def optimize_hhp_operation(
     etaB: float,
     Qhp_max: float,
     Qbo_max: float,
+    day_ahead: bool = False
 ) -> pd.DataFrame:
     """
     Hybrid‐HP dispatch with comfort constraints.
-    Returns: DataFrame with ['Q_hp','Q_bo','Tin','T_set','T_low','T_high']
+    If day_ahead=True, solves one optimization per calendar day using only that day's tariff & weather,
+    carrying the final indoor temperature forward as the next day's initial condition.
+
+    Returns: DataFrame with ['Q_hp','Q_bo','Tin','T_set','T_low','T_high'] at the same time index as tariff.
     """
 
-    T = len(tariff)
-    beta = dt * R1 / (C1 * R1 + dt)
+    def _single_dispatch(R1, C1, g,
+                         tariff_sub, Tout_sub, S_sub, dt,
+                         T0_sub, T_set_sub, tol_sub,
+                         COP, etaB, Qhp_max, Qbo_max):
+        T = len(tariff_sub)
+        # comfort bounds
+        tol_arr = tol_sub if np.ndim(tol_sub) > 0 else np.full(T, tol_sub)
+        T_low = np.where(T_set_sub >= 19.0, T_set_sub - tol_arr, 15.0)
+        T_high = np.where(T_set_sub >= 19.0, T_set_sub + tol_arr, np.nan)
 
-    m = gp.Model("hhp_dispatch")
-    m.Params.OutputFlag = 0
+        beta = dt * R1 / (C1 * R1 + dt)
+        m = gp.Model()
+        m.Params.OutputFlag = 0
 
-    # decision vars
-    Q_hp = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp")
-    Q_bo = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo")
-    Tin  = m.addVars(T, lb=-GRB.INFINITY, name="Tin")
+        Q_hp = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp")
+        Q_bo = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo")
+        Tin  = m.addVars(T, lb=-GRB.INFINITY, name="Tin")
 
-    # objective
-    m.setObjective(
-        gp.quicksum(
-            (Q_hp[t]/COP)*tariff['elec_price'].iat[t] +
-            (Q_bo[t]/etaB)*tariff['gas_price'].iat[t]
-            for t in range(T)
-        ),
-        GRB.MINIMIZE
-    )
-
-    # initial condition
-    m.addConstr(Tin[0] == T0, name="init_temp")
-
-    # dynamics
-    for t in range(1, T):
-        m.addConstr(
-            Tin[t] == Tin[t-1]
-                      + beta * (
-                          (Tout[t-1] - Tin[t-1]) / R1
-                        + Q_hp[t-1]
-                        + Q_bo[t-1]
-                        + g * S[t-1]
-                      ),
-            name=f"dyn_{t}"
+        m.setObjective(
+            gp.quicksum(
+                (Q_hp[t]/COP)*tariff_sub['elec_price'].iat[t] +
+                (Q_bo[t]/etaB)*tariff_sub['gas_price'].iat[t]
+                for t in range(T)
+            ),
+            GRB.MINIMIZE
         )
+        m.addConstr(Tin[0] == T0_sub, name="init_temp")
+        for t in range(1, T):
+            m.addConstr(
+                Tin[t] == Tin[t-1]
+                          + beta * (
+                              (Tout_sub[t-1] - Tin[t-1]) / R1
+                            + Q_hp[t-1]
+                            + Q_bo[t-1]
+                            + g * S_sub[t-1]
+                          ),
+                name=f"dyn_{t}"
+            )
+        for t in range(T):
+            m.addConstr(Tin[t] >= T_low[t], name=f"tmin_{t}")
+            if not np.isnan(T_high[t]):
+                m.addConstr(Tin[t] <= T_high[t], name=f"tmax_{t}")
+        m.optimize()
+        if m.Status != GRB.OPTIMAL:
+            raise RuntimeError(f"Gurobi failed on subproblem. Status {m.Status}")
 
-    # build comfort bands
-    tol_arr = tol if np.ndim(tol) > 0 else np.full(T, tol)
-    T_low = np.where(T_setpoint >= 19.0, T_setpoint - tol_arr, 15.0)
-    T_high = np.where(T_setpoint >= 19.0, T_setpoint + tol_arr, np.nan)  # NaN if no upper bound
+        Qhp_res = np.array([Q_hp[t].X for t in range(T)])
+        Qbo_res = np.array([Q_bo[t].X for t in range(T)])
+        Tin_res = np.array([Tin[t].X for t in range(T)])
+        return pd.DataFrame({
+            'Q_hp': Qhp_res,
+            'Q_bo': Qbo_res,
+            'Tin' : Tin_res,
+            'T_set': T_set_sub,
+            'T_low': T_low,
+            'T_high': T_high
+        }, index=tariff_sub.index)
 
-    for t in range(T):
-        m.addConstr(Tin[t] >= T_low[t], name=f"tmin_{t}")
-        if not np.isnan(T_high[t]):
-            m.addConstr(Tin[t] <= T_high[t], name=f"tmax_{t}")
+    # If day-ahead mode, split calendar days
+    if day_ahead:
+        all_days = tariff.index.normalize().unique()
+        results = []
+        T0_curr = T0
+        # build tolerance array once
+        tol_arr_full = tol if np.ndim(tol) > 0 else np.full(len(tariff), tol)
+        # pre-calc boolean mask array per day
+        norm_idx = tariff.index.normalize()
+        for day in all_days:
+            day_mask = (norm_idx == day)
+            sub_tariff = tariff.loc[day_mask]
+            sub_Tout    = Tout[day_mask]
+            sub_S       = S[day_mask]
+            sub_Tset    = T_setpoint[day_mask]
+            sub_tol     = tol_arr_full[day_mask]
+            if len(sub_tariff) == 0:
+                continue
+            df_day = _single_dispatch(
+                R1, C1, g,
+                sub_tariff, sub_Tout, sub_S, dt,
+                T0_curr, sub_Tset, sub_tol,
+                COP, etaB, Qhp_max, Qbo_max
+            )
+            # carry forward
+            T0_curr = df_day['Tin'].iat[-1]
+            results.append(df_day)
+        # concatenate daily results
+        return pd.concat(results).loc[tariff.index]  # ensure original order
 
-    m.optimize()
+    # otherwise, solve full horizon at once
+    return _single_dispatch(R1, C1, g, tariff, Tout, S, dt, T0, T_setpoint, tol, COP, etaB, Qhp_max, Qbo_max)
 
-    if m.Status != GRB.OPTIMAL:
-        raise RuntimeError(f"Gurobi did not find an optimal solution. Status: {m.Status}")
-
-    Qhp_res = np.array([Q_hp[t].X for t in range(T)])
-    Qbo_res = np.array([Q_bo[t].X for t in range(T)])
-    Tin_res = np.array([Tin[t].X for t in range(T)])
-
-    return pd.DataFrame({
-        'Q_hp': Qhp_res,
-        'Q_bo': Qbo_res,
-        'Tin': Tin_res,
-        'T_set': T_setpoint,
-        'T_low': T_low,
-        'T_high': T_high
-    }, index=tariff.index)
 
 # Function to generate a daily tariff DataFrame with electricity and gas prices
 def build_tariff(start_date,n_days,step="30min",type:str="cosy"):
@@ -213,8 +330,8 @@ def plot_hhp_results_components(
     print(f"Figure saved to {out_path}")
 
 if __name__ == "__main__":
-    start_date = pd.to_datetime("2022-01-03")
-    n_days = 25  # change to however many days you want
+    start_date = pd.to_datetime("2022-01-01")
+    n_days = 31  # change to however many days you want
     step = "30min"
     # --- Build multi-day tariff ---
     tariff_list = [daily_tariff(start_date + pd.Timedelta(days=i)) for i in range(n_days)]
@@ -233,13 +350,13 @@ if __name__ == "__main__":
     # define a daily setpoint schedule plus ±0.5°C tolerance
     # e.g. 20°C from midnight–06:00, 22°C from 06:00–22:00, back to 20°C
     hours = tariff.index.hour
-    T_set = np.where((hours >= 6) & (hours < 10) | (hours >= 17) & (hours < 21), 25.0, 15.0)
+    T_set = np.where((hours >= 6) & (hours < 10) | (hours >= 17) & (hours < 21), 21.0, 15.0)
     print(len(T_set))
     tol = 1
 
     # other parameters
     R1, C1, g = 1 / 200, 3e7, 10.0
-    T0 = 20
+    T0 = 21
     COP = 3.5
     etaB = 0.9
     Qhp_max = 4e3
@@ -249,7 +366,7 @@ if __name__ == "__main__":
         R1, C1, g, tariff, Tout, S, dt, T0,
         T_setpoint=T_set, tol=tol,
         COP=COP, etaB=etaB,
-        Qhp_max=Qhp_max, Qbo_max=Qbo_max
+        Qhp_max=Qhp_max, Qbo_max=Qbo_max,day_ahead= False
     )
 
     print(results)
@@ -264,5 +381,6 @@ if __name__ == "__main__":
         index=results.index,
         tariff=tariff,
         df=df,
-        title_prefix="Cooling Scenario"
+        title_prefix="Cooling Scenario",
+        filename="HHP_global_4kW.png",
     )

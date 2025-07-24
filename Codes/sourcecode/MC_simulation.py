@@ -16,9 +16,11 @@ from Residential_CIGRE_LV_network import R_LV_CIGRE
 
 from Load_aggregation import mc_assign_households, load_aggregation_by_nodes
 
-def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: float = 0.2, df_HHP_dir=None, df_HP_dir=None,out_dir: str = r"E:\GitHubProjects\LV network\Codes\Output", percentile: float = 0.95):
+def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: float = 0.2, df_HHP_dir=None, df_HP_dir=None,out_dir: str = r"E:\GitHubProjects\LV network\Codes\Output\test", percentile: float = 0.95):
     if not 0.0 <= hhp_percentage <= 1.0:
         raise ValueError("HHP percentage must be between 0 and 1 inclusive.")
+    if hhp_percentage ==1.0 or hhp_percentage == 0.0:
+        n_samples = 1  # If HHP percentage is 0 or 100, only one sample is needed
     net = R_LV_CIGRE()  # Reinitialize the network for each sample
     # Prepare storage arrays
     n_lines = len(net.line)
@@ -29,6 +31,12 @@ def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: fl
     monte_max_line_power = np.zeros((n_samples, n_lines))
     monte_max_trafo_loading = np.zeros((n_samples, n_trafos))
     monte_min_bus_voltage = np.ones((n_samples, n_buses))  # Init to 1.0 pu
+
+    # NEW: time‐flags (datetime64) for each extreme
+    monte_time_line_loading  = np.empty((n_samples, n_lines), dtype="datetime64[ns]")
+    monte_time_line_power    = np.empty((n_samples, n_lines), dtype="datetime64[ns]")
+    monte_time_trafo_loading = np.empty((n_samples, n_trafos), dtype="datetime64[ns]")
+    monte_time_bus_voltage   = np.empty((n_samples, n_buses), dtype="datetime64[ns]")
 
     for s in range(n_samples):
         print(f"\n--- MC Sample {s + 1}/{n_samples} ---")
@@ -69,12 +77,24 @@ def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: fl
             trafo_loading[i, :] = net.res_trafo.loading_percent.values
             bus_voltage[i, :] = net.res_bus.vm_pu.values
 
-        # Store extreme values for this sample
-        monte_max_line_loading[s, :] = line_loading.max(axis=0)
-        monte_max_line_power[s, :] = np.abs(line_power).max(axis=0)
-        monte_max_trafo_loading[s, :] = trafo_loading.max(axis=0)
-        monte_min_bus_voltage[s, :] = bus_voltage.min(axis=0)
+        # 1) find per‐component argmax/argmin
+        for j in range(n_lines):
+            idx1 = np.argmax(line_loading[:, j])
+            idx2 = np.argmax(np.abs(line_power[:, j]))
+            monte_time_line_loading[s, j] = timestamps[idx1]
+            monte_time_line_power[s, j]   = timestamps[idx2]
+        for k in range(n_trafos):
+            idxT = np.argmax(trafo_loading[:, k])
+            monte_time_trafo_loading[s, k] = timestamps[idxT]
+        for b in range(n_buses):
+            idxV = np.argmin(bus_voltage[:, b])
+            monte_time_bus_voltage[s, b]   = timestamps[idxV]
 
+        # store the extreme values
+        monte_max_line_loading[s, :]  = line_loading.max(axis=0)
+        monte_max_line_power[s, :]    = np.abs(line_power).max(axis=0)
+        monte_max_trafo_loading[s, :] = trafo_loading.max(axis=0)
+        monte_min_bus_voltage[s, :]   = bus_voltage.min(axis=0)
 #-------------------------------After all samples, save the results----------------------------------------------------------------------------
     # Build column names with categories
     line_cols_loading = [f"line_loading_{i}" for i in range(monte_max_line_loading.shape[1])]
@@ -88,6 +108,32 @@ def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: fl
     df_voltage = pd.DataFrame(monte_min_bus_voltage, columns=bus_cols)
     # Concatenate horizontally
     df_all = pd.concat([df_loading, df_power, df_trafo, df_voltage], axis=1)
+    # NEW: build DataFrames for timestamps
+    df_t_line_loading = pd.DataFrame(
+        monte_time_line_loading,
+        columns=[f"line_loading_time_{i}" for i in range(n_lines)]
+    )
+    df_t_line_power = pd.DataFrame(
+        monte_time_line_power,
+        columns=[f"line_power_time_{i}" for i in range(n_lines)]
+    )
+    df_t_trafo_loading = pd.DataFrame(
+        monte_time_trafo_loading,
+        columns=[f"trafo_loading_time_{i}" for i in range(n_trafos)]
+    )
+    df_t_bus_voltage = pd.DataFrame(
+        monte_time_bus_voltage,
+        columns=[f"bus_voltage_time_{i}" for i in range(n_buses)]
+    )
+
+    # concat the time‐flags too
+    df_all = pd.concat([
+        df_all,
+        df_t_line_loading,
+        df_t_line_power,
+        df_t_trafo_loading,
+        df_t_bus_voltage
+    ], axis=1)
     # Save to CSV with formatted HHP percentage in filename
     df_all.index.name = "monte_carlo_iter"
     perc_str = f"{int(hhp_percentage * 100):02d}p"
