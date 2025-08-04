@@ -275,7 +275,7 @@ def plot_hhp_results_components(
 
     Other parameters unchanged...
     """
-    fig, axs = plt.subplots(6, 1, figsize=(12, 14), sharex=True)
+    fig, axs = plt.subplots(5, 1, figsize=(12, 14), sharex=True)
 
     # 1. Tariff prices
     axs[0].plot(tariff.index, tariff["elec_price"], label="Electricity (p/kWh)", color='blue')
@@ -311,13 +311,6 @@ def plot_hhp_results_components(
     axs[4].set_ylabel("Total Heat (kW)")
     axs[4].legend()
     axs[4].grid(True)
-
-    # 6. Measured indoor temperature
-    if include_measured and "Internal_Air_Temperature" in df.columns:
-        axs[5].plot(df.index, df["Internal_Air_Temperature"], label="Measured Indoor T", color='purple')
-        axs[5].set_ylabel("Measured T (°C)")
-        axs[5].legend()
-        axs[5].grid(True)
 
     plt.xlabel("Time")
     plt.suptitle(title_prefix, y=1.02)
