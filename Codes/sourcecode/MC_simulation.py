@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 import pandapower as pp, pandapower.networks as pn
 from Network_Plotting import plot_pf_with_transformer_capacity
-
+import numba
 # This is for the RC optimization model
 import RC_Optimization as rc
 
@@ -16,7 +16,7 @@ from Residential_CIGRE_LV_network import R_LV_CIGRE
 
 from Load_aggregation import mc_assign_households, load_aggregation_by_nodes
 
-def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: float = 0.2, df_HHP_dir=None, df_HP_dir=None,out_dir: str = r"E:\GitHubProjects\LV network\Codes\Output", percentile: float = 0.95):
+def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: float = 0.2, df_HHP_dir=None, df_HP_dir=None,out_dir: str = r"E:\GitHubProjects\LV network\Codes\Output", percentile: float = 0.95,numba=False):
     if not 0.0 <= hhp_percentage <= 1.0:
         raise ValueError("HHP percentage must be between 0 and 1 inclusive.")
     if hhp_percentage ==1.0 or hhp_percentage == 0.0:
@@ -66,7 +66,7 @@ def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: fl
 
             # Run PF
             try:
-                pp.runpp(net, numba=False)
+                pp.runpp(net, numba=numba)
             except:
                 print(f"Power flow failed at {t} in sample {s}")
                 continue

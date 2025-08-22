@@ -228,11 +228,11 @@ def daily_tariff(day, step="30min"):
     gas  = pd.Series(5.0, index=times) # default gas price 5.0
 
     cosy_periods = [
-        (day + pd.Timedelta("02:00:00"), day + pd.Timedelta("05:00:00")),
-        (day + pd.Timedelta("13:00:00"), day + pd.Timedelta("17:00:00")),
-        (day + pd.Timedelta("21:00:00"), day + pd.Timedelta("24:00:00")),
+        (day + pd.Timedelta("04:00:00"), day + pd.Timedelta("07:00:00")),
+        (day + pd.Timedelta("13:00:00"), day + pd.Timedelta("16:00:00")),
+        (day + pd.Timedelta("22:00:00"), day + pd.Timedelta("24:00:00")),
     ]
-    high_periods = [(day + pd.Timedelta("17:00:00"), day + pd.Timedelta("20:00:00"))]
+    high_periods = [(day + pd.Timedelta("16:00:00"), day + pd.Timedelta("19:00:00"))]
 
     for start, end in cosy_periods:
         elec[start:end] = 5.0
