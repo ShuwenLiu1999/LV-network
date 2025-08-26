@@ -63,7 +63,7 @@ def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: fl
                     load_idx = net.load.index[net.load["name"] == name][0]
                     p_kw = df_load_by_nodes.loc[t, name] / 1000
                     net.load.at[load_idx, "p_mw"] = p_kw / 1000  # kW → MW
-
+                    net.load.at[load_idx, "q_mvar"] = (p_kw/1000)*0.329  # assuming 0.95 power factor
             # Run PF
             try:
                 pp.runpp(net, numba=numba)
