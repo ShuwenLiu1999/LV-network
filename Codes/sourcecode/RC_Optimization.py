@@ -299,12 +299,31 @@ def plot_hhp_results_components(
     axs[2].legend()
     axs[2].grid(True)
 
-    # 4. Outdoor temperature and GHI
-    axs[3].plot(df.index, df["External_Air_Temperature"], label="Outdoor Temp (°C)", color='black')
-    axs[3].plot(df.index, df["GHI"] / 100, label="GHI (x0.01 W/m²)", color='gold', linestyle=':')
-    axs[3].set_ylabel("Outdoor / GHI")
-    axs[3].legend()
-    axs[3].grid(True)
+    # 4. Outdoor temperature and GHI (dual axis)
+    weather_ax = axs[3]
+    ghi_ax = weather_ax.twinx()
+
+    temp_line, = weather_ax.plot(
+        df.index,
+        df["External_Air_Temperature"],
+        label="Outdoor Temp (°C)",
+        color="black",
+    )
+    ghi_line, = ghi_ax.plot(
+        df.index,
+        df["GHI"],
+        label="GHI (W/m²)",
+        color="gold",
+        linestyle=":",
+    )
+
+    weather_ax.set_ylabel("Outdoor Temp (°C)")
+    ghi_ax.set_ylabel("GHI (W/m²)")
+
+    lines = [temp_line, ghi_line]
+    labels = [line.get_label() for line in lines]
+    weather_ax.legend(lines, labels)
+    weather_ax.grid(True)
 
     # 5. Total thermal power
     axs[4].plot(index, (Q_hp + Q_bo) / 1000, label="Total Heat (kW)", color='teal')
