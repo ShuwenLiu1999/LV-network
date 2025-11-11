@@ -19,9 +19,6 @@ import pandas as pd
 
 from RC_Optimization import build_tariff, optimize_hhp_operation
 
-# ---------------------------------------------------------------------------
-# Data containers
-
 
 @dataclass(frozen=True)
 class BuildingParameters:
@@ -34,22 +31,18 @@ class BuildingParameters:
 
     @property
     def dwelling_id(self) -> str:
-        """Return a neat identifier derived from the dataset name."""
+        """Return a friendly identifier derived from the dataset filename."""
 
         if self.dataset.endswith("_merged_30min.parquet"):
             return self.dataset[: -len("_merged_30min.parquet")]
         return Path(self.dataset).stem
 
 
-# ---------------------------------------------------------------------------
-# Core helper functions
-
-
 def load_summary(summary_path: Path) -> list[BuildingParameters]:
     """Read the summary CSV into :class:`BuildingParameters` objects."""
 
     df = pd.read_csv(summary_path)
-    required_cols = {"dataset", "R1", "C1", "g"}
+    required_cols = frozenset({"dataset", "R1", "C1", "g"})
     missing = required_cols.difference(df.columns)
     if missing:
         raise ValueError(f"Summary file missing columns: {sorted(missing)}")
@@ -67,19 +60,22 @@ def load_summary(summary_path: Path) -> list[BuildingParameters]:
     return params
 
 
-def load_weather(weather_path: Path,
-                 start: pd.Timestamp,
-                 end: pd.Timestamp) -> pd.DataFrame:
+def load_weather(
+    weather_path: Path, start: pd.Timestamp, end: pd.Timestamp
+) -> pd.DataFrame:
     """Load and tidy the weather/profile data for the required window."""
 
-    df = pd.read_csv(weather_path, parse_dates=["time"]).set_index("time").sort_index()
+    df = (
+        pd.read_csv(weather_path, parse_dates=["time"])
+        .set_index("time")
+        .sort_index()
+    )
     window = df.loc[start:end].copy()
     if window.empty:
         raise ValueError(
             f"Weather file {weather_path} does not contain data between {start} and {end}."
         )
 
-    # Ensure numeric columns are floats; coerce missing strings to NaN
     for column in (
         "External_Air_Temperature",
         "Internal_Air_Temperature",
@@ -97,12 +93,13 @@ def extract_outdoor_temperature(weather: pd.DataFrame) -> np.ndarray:
     """Prefer measured external air temperature and fall back to re-analysis."""
 
     if "External_Air_Temperature" in weather:
-        series = weather["External_Air_Temperature"].fillna(method="ffill").fillna(method="bfill")
+        series = weather["External_Air_Temperature"].ffill().bfill()
     elif "t2m_°C" in weather:
-        series = weather["t2m_°C"].fillna(method="ffill").fillna(method="bfill")
+        series = weather["t2m_°C"].ffill().bfill()
     else:
-        raise ValueError("Weather dataset does not contain an outdoor temperature column.")
-
+        raise ValueError(
+            "Weather dataset does not contain an outdoor temperature column."
+        )
     return series.to_numpy()
 
 
@@ -112,23 +109,26 @@ def extract_solar_gain(weather: pd.DataFrame, step_seconds: float) -> np.ndarray
     if "GHI" in weather:
         series = weather["GHI"]
     elif "ssrd_J_m2_30min" in weather:
-        # Convert surface solar radiation (J/m² over interval) to W/m²
         series = weather["ssrd_J_m2_30min"] / step_seconds
     else:
         series = pd.Series(0.0, index=weather.index)
-
     return series.fillna(0.0).to_numpy()
 
 
 def derive_setpoint(index: pd.DatetimeIndex) -> np.ndarray:
-    """Construct a simple comfort schedule for the optimisation."""
+    """Construct the comfort setpoint schedule for the optimisation horizon."""
 
     hours = index.hour
-    # 21 °C during typical occupancy, 18 °C otherwise
-    return np.where(((hours >= 6) & (hours < 9)) | ((hours >= 17) & (hours < 22)), 21.0, 18.0)
+    return np.where(
+        ((hours >= 6) & (hours < 9)) | ((hours >= 17) & (hours < 22)),
+        21.0,
+        18.0,
+    )
 
 
-def derive_initial_temperature(weather: pd.DataFrame, fallback: float = 19.0) -> float:
+def derive_initial_temperature(
+    weather: pd.DataFrame, fallback: float = 19.0
+) -> float:
     """Use the first valid internal temperature if available."""
 
     if "Internal_Air_Temperature" in weather:
@@ -138,31 +138,34 @@ def derive_initial_temperature(weather: pd.DataFrame, fallback: float = 19.0) ->
     return float(fallback)
 
 
-def ensure_aligned_tariff(tariff: pd.DataFrame, index: pd.DatetimeIndex) -> pd.DataFrame:
-    """Align tariff data with the weather index."""
+def ensure_aligned_tariff(
+    tariff: pd.DataFrame, index: pd.DatetimeIndex
+) -> pd.DataFrame:
+    """Align the tariff profile to match the simulation index."""
 
     tariff = tariff.copy()
     tariff.index = tariff.index.tz_localize(None)
-    # Restrict and reindex to match the weather timestamps exactly
     return tariff.reindex(index)
 
 
-def run_optimisation(params: Iterable[BuildingParameters],
-                     weather: pd.DataFrame,
-                     tariff: pd.DataFrame,
-                     dt_seconds: float,
-                     setpoint: np.ndarray,
-                     tolerance: float,
-                     cop: float,
-                     eta_boiler: float,
-                     qhp_max: float,
-                     qbo_max: float,
-                     output_dir: Path) -> None:
+def run_optimisation(
+    params: Iterable[BuildingParameters],
+    weather: pd.DataFrame,
+    tariff: pd.DataFrame,
+    dt_seconds: float,
+    setpoint: np.ndarray,
+    tolerance: float,
+    cop: float,
+    eta_boiler: float,
+    qhp_max: float,
+    qbo_max: float,
+    output_dir: Path,
+) -> None:
     """Execute the optimisation for each dwelling and persist the results."""
 
     Tout = extract_outdoor_temperature(weather)
-    S = extract_solar_gain(weather, dt_seconds)
-    T0 = derive_initial_temperature(weather)
+    solar_gain = extract_solar_gain(weather, dt_seconds)
+    initial_temp = derive_initial_temperature(weather)
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -173,9 +176,9 @@ def run_optimisation(params: Iterable[BuildingParameters],
             param.g,
             tariff,
             Tout,
-            S,
+            solar_gain,
             dt_seconds,
-            T0,
+            initial_temp,
             T_setpoint=setpoint,
             tol=tolerance,
             COP=cop,
@@ -194,28 +197,26 @@ def run_optimisation(params: Iterable[BuildingParameters],
         print(f"Saved demand profile for {param.dwelling_id} to {out_path}")
 
 
-# ---------------------------------------------------------------------------
-# Command-line interface
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+
+    repo_root = Path(__file__).resolve().parents[1]
     parser.add_argument(
         "--summary",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "Data" / "1R1C1P1S_filtered.csv",
+        default=repo_root / "Data" / "1R1C1P1S_filtered.csv",
         help="Path to the summary CSV containing R, C and g parameters.",
     )
     parser.add_argument(
         "--weather",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "Data" / "EOH2303_merged_30min.csv",
+        default=repo_root / "Data" / "EOH2303_merged_30min.csv",
         help="Weather/profile CSV for EOH2303.",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "Output" / "DemandProfiles",
+        default=repo_root / "Output" / "DemandProfiles",
         help="Directory to store the generated demand profiles.",
     )
     parser.add_argument(
@@ -253,14 +254,14 @@ def parse_args() -> argparse.Namespace:
         "--hp-max",
         dest="hp_max",
         type=float,
-        default=4_000.0,
+        default=4000.0,
         help="Maximum thermal power of the heat pump in watts.",
     )
     parser.add_argument(
         "--boiler-max",
         dest="boiler_max",
         type=float,
-        default=24_000.0,
+        default=24000.0,
         help="Maximum thermal power of the boiler in watts.",
     )
     parser.add_argument(
@@ -269,27 +270,30 @@ def parse_args() -> argparse.Namespace:
         default="cosy",
         help="Shape of the electricity tariff profile.",
     )
+
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
 
-    summary_path: Path = args.summary
-    weather_path: Path = args.weather
-    output_dir: Path = args.output
-    start: pd.Timestamp = args.start
-    end: pd.Timestamp = args.end
+    summary_path = args.summary
+    weather_path = args.weather
+    output_dir = args.output
+    start = args.start
+    end = args.end
 
     params = load_summary(summary_path)
     weather = load_weather(weather_path, start, end)
 
     dt_seconds = weather.index.to_series().diff().dropna().median().total_seconds()
-    if not np.isfinite(dt_seconds) or dt_seconds <= 0:
+    if not (np.isfinite(dt_seconds) and dt_seconds > 0):
         raise ValueError("Could not infer timestep from weather data.")
 
     tariff_days = int((end.normalize() - start.normalize()).days) + 1
-    tariff = build_tariff(start.normalize(), n_days=tariff_days, step="30min", type=args.tariff_type)
+    tariff = build_tariff(
+        start.normalize(), n_days=tariff_days, step="30min", type=args.tariff_type
+    )
     tariff = ensure_aligned_tariff(tariff, weather.index)
 
     setpoint = derive_setpoint(weather.index)
