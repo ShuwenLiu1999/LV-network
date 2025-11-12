@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 from typing import Iterable
 
@@ -16,15 +17,34 @@ from Codes.sourcecode.generate_demand_metrics import (
 )
 
 
-PEAK_COL = "Peak Electricity Consumption (Feb 11 1600-1900) [kWh]"
+DWELLING_COL = "Dwelling ID"
+PEAK_COL = "Peak Electricity Consumption (Feb 11) 1600-1900"
 TARIFF_COL = "Tariff Type"
-WEATHER_COL = "Weather (mild/extreme)"
-DEVICE_COL = "Device (HHP/mHP+capacity)"
-R_COL = "R (K/W)"
-C_COL = "C (J/K)"
-G_COL = "g (m^2)"
+WEATHER_COL = "Weather(mild/extreme)"
+DEVICE_COL = "Device(HHP/mHP+capacity)"
+R_COL = "R(K/W)"
+C_COL = "C(J/K)"
+G_COL = "g(m^2)"
 THERMAL_CONSTANT_COL = "Thermal Constant (R*C)"
 REDUCTION_COL = "Peak Demand Reduction (Flat -> Time-of-use) [kWh]"
+
+REQUIRED_COLUMNS = [DWELLING_COL, PEAK_COL, TARIFF_COL, WEATHER_COL, DEVICE_COL, R_COL, C_COL, G_COL]
+
+COLUMN_ALIASES = {
+    "dwellingid": DWELLING_COL,
+    "devicehhpmhpcapacity": DEVICE_COL,
+    "tarifftype": TARIFF_COL,
+    "weathermildextreme": WEATHER_COL,
+    "peakelectricityconsumptionfeb1116001900": PEAK_COL,
+    "peakelectricityconsumptionfeb1116001900kwh": PEAK_COL,
+    "totalelectricityconsumptionfeb1012": "Total Electricity Consumption (Feb10-12)",
+    "totalelectricityconsumptionfeb1012kwh": "Total Electricity Consumption (Feb10-12)",
+    "totalgasconsumptionfeb1012": "Total gas Consumption (Feb10-12)",
+    "totalgasconsumptionfeb1012kwh": "Total gas Consumption (Feb10-12)",
+    "rkw": R_COL,
+    "cjk": C_COL,
+    "gm2": G_COL,
+}
 
 
 def _candidate_summaries(explicit: Path | None) -> Iterable[Path]:
@@ -45,15 +65,40 @@ def _candidate_summaries(explicit: Path | None) -> Iterable[Path]:
         yield candidate
 
 
+def _normalise_column_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(name).lower())
+
+
+def _standardise_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    rename: dict[str, str] = {}
+    for column in frame.columns:
+        key = _normalise_column_name(column)
+        target = COLUMN_ALIASES.get(key)
+        if target:
+            rename[column] = target
+
+    if rename:
+        frame = frame.rename(columns=rename)
+
+    missing = [column for column in REQUIRED_COLUMNS if column not in frame.columns]
+    if missing:
+        raise KeyError(
+            "Missing required columns in metrics CSV: "
+            + ", ".join(missing)
+        )
+
+    return frame
+
+
 def load_metrics(summary_path: Path | None = None) -> pd.DataFrame:
     """Load the pre-computed metrics or build them if no CSV is present."""
 
     for candidate in _candidate_summaries(summary_path):
         if candidate.exists():
-            return pd.read_csv(candidate)
+            return _standardise_columns(pd.read_csv(candidate))
 
     # Fall back to recomputing everything from the demand profiles.
-    return compute_metrics()
+    return _standardise_columns(compute_metrics())
 
 
 def _extract_device_fields(frame: pd.DataFrame) -> pd.DataFrame:
@@ -91,7 +136,7 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
     if extreme.empty:
         return pd.DataFrame(
             columns=[
-                "Dwelling ID",
+                DWELLING_COL,
                 "Technology",
                 "Capacity kW",
                 "Flat",
@@ -107,7 +152,7 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
     extreme = _extract_device_fields(extreme)
     extreme[TARIFF_COL] = _normalise_tariff(extreme[TARIFF_COL])
 
-    index_cols = ["Dwelling ID", "Technology", "Capacity kW"]
+    index_cols = [DWELLING_COL, "Technology", "Capacity kW"]
 
     pivot = (
         extreme.pivot_table(
@@ -134,7 +179,7 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
     pivot[REDUCTION_COL] = pivot["Flat"] - pivot["Time-of-use"]
     pivot[THERMAL_CONSTANT_COL] = pivot[R_COL] * pivot[C_COL]
 
-    return pivot.sort_values(["Technology", "Dwelling ID"]).reset_index(drop=True)
+    return pivot.sort_values(["Technology", DWELLING_COL]).reset_index(drop=True)
 
 
 def plot_histograms(reduction: pd.DataFrame, output_dir: Path) -> dict[str, Path]:
