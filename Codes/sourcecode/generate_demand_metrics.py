@@ -5,7 +5,7 @@ This script reads the synthetic heating demand profiles located in
 ``Codes/Data/1R1C1P1S_filtered_filtered.csv``.  It calculates the metrics needed
 for the reporting template provided by the user and writes them to
 ``Codes/Output/demand_metrics_summary.csv``.  All energy results are reported in
-kWh and the peak power in kW.
+kWh and the peak window consumption in kWh.
 
 Example usage::
 
@@ -36,7 +36,7 @@ TIME_STEP_HOURS = 0.5  # 30 minute time-step in the demand profiles.
 
 # Date ranges required by the template.
 PEAK_START = pd.Timestamp("2022-02-11 16:00:00")
-PEAK_END = pd.Timestamp("2022-02-11 19:30:00")  # inclusive of the 19:00-19:30 slot.
+PEAK_END = pd.Timestamp("2022-02-11 19:00:00")  # stop at 19:00 to cover 16:00-19:00.
 AGGREGATION_START = pd.Timestamp("2022-02-10 00:00:00")
 AGGREGATION_END = pd.Timestamp("2022-02-13 00:00:00")  # stop at 00:00 on Feb 13th.
 
@@ -122,9 +122,9 @@ def compute_metrics(
         peak_mask = (frame["time"] >= PEAK_START) & (frame["time"] < PEAK_END)
         aggregation_mask = (frame["time"] >= AGGREGATION_START) & (frame["time"] < AGGREGATION_END)
 
-        peak_kw = frame.loc[peak_mask, "hp_elec_kw"].max()
-        if pd.isna(peak_kw):
-            peak_kw = 0.0
+        peak_kwh = (frame.loc[peak_mask, "hp_elec_kw"] * TIME_STEP_HOURS).sum()
+        if pd.isna(peak_kwh):
+            peak_kwh = 0.0
 
         total_elec_kwh = (frame.loc[aggregation_mask, "hp_elec_kw"] * TIME_STEP_HOURS).sum()
         total_gas_kwh = (frame.loc[aggregation_mask, "boiler_gas_kw"] * TIME_STEP_HOURS).sum()
@@ -135,7 +135,7 @@ def compute_metrics(
                 "Device (HHP/mHP+capacity)": scenario.device_label(),
                 "Tariff Type": scenario.tariff,
                 "Weather (mild/extreme)": scenario.weather,
-                "Peak Electricity Consumption (Feb 11 1600-1900) [kW]": round(peak_kw, 3),
+                "Peak Electricity Consumption (Feb 11 1600-1900) [kWh]": round(peak_kwh, 3),
                 "Total Electricity Consumption (Feb10-12) [kWh]": round(total_elec_kwh, 3),
                 "Total Gas Consumption (Feb10-12) [kWh]": round(total_gas_kwh, 3),
             }
