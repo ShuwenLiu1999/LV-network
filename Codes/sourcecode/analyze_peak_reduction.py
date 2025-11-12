@@ -154,9 +154,13 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
 
     index_cols = [DWELLING_COL, "Technology", "Capacity kW"]
 
+    aggregated = (
+        extreme.groupby(index_cols + [TARIFF_COL], as_index=False)[PEAK_COL]
+        .first()
+    )
+
     pivot = (
-        extreme.set_index(index_cols + [TARIFF_COL])[PEAK_COL]
-        .unstack(TARIFF_COL)
+        aggregated.pivot(index=index_cols, columns=TARIFF_COL, values=PEAK_COL)
         .reindex(columns=["Flat", "Time-of-use"])
         .rename_axis(columns=None)
         .reset_index()
