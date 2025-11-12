@@ -9,7 +9,7 @@ kWh and the peak power in kW.
 
 Example usage::
 
-    python Codes/generate_demand_metrics.py
+    python Codes/sourcecode/generate_demand_metrics.py
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from typing import Iterable
 import pandas as pd
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMAND_PROFILES_ROOT = REPO_ROOT / "Codes" / "Output" / "DemandProfiles"
 SUMMARY_FILE = REPO_ROOT / "Codes" / "Data" / "1R1C1P1S_filtered_filtered.csv"
 OUTPUT_FILE = REPO_ROOT / "Codes" / "Output" / "demand_metrics_summary.csv"
