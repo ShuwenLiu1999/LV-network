@@ -430,24 +430,30 @@ def main() -> None:
     scatter_path = plot_scatter_matrix(reduction, args.figures_dir / args.scatter_name)
     print(f"Saved scatter matrix to {scatter_path}")
 
-    proportion_hist_paths = plot_histograms(
-        reduction,
-        args.figures_dir,
-        metric_col=HP_PROPORTION_TOU_COL,
-        metric_label="Heat pump heat proportion (Time-of-use)",
-        file_prefix="hp_heat_proportion_hist",
-        units=None,
-    )
-    for tech, path in proportion_hist_paths.items():
-        print(f"Saved {tech} heat proportion histogram to {path}")
+    hhp_mask = reduction["Technology"].astype(str).str.upper() == "HHP"
+    hhp_reduction = reduction.loc[hhp_mask].copy()
 
-    proportion_scatter_path = plot_scatter_matrix(
-        reduction,
-        args.figures_dir / "hp_heat_proportion_scatter.png",
-        metric_col=HP_PROPORTION_TOU_COL,
-        metric_label="Heat pump heat proportion (Time-of-use)",
-    )
-    print(f"Saved heat proportion scatter matrix to {proportion_scatter_path}")
+    if not hhp_reduction.empty:
+        proportion_hist_paths = plot_histograms(
+            hhp_reduction,
+            args.figures_dir,
+            metric_col=HP_PROPORTION_TOU_COL,
+            metric_label="Heat pump heat proportion (Time-of-use)",
+            file_prefix="hp_heat_proportion_hist",
+            units=None,
+        )
+        for tech, path in proportion_hist_paths.items():
+            print(f"Saved {tech} heat proportion histogram to {path}")
+
+        proportion_scatter_path = plot_scatter_matrix(
+            hhp_reduction,
+            args.figures_dir / "hp_heat_proportion_scatter.png",
+            metric_col=HP_PROPORTION_TOU_COL,
+            metric_label="Heat pump heat proportion (Time-of-use)",
+        )
+        print(f"Saved heat proportion scatter matrix to {proportion_scatter_path}")
+    else:
+        print("No HHP rows available for heat proportion plots; skipping figure generation.")
 
 
 if __name__ == "__main__":
