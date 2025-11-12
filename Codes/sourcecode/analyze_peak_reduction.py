@@ -57,11 +57,28 @@ def load_metrics(summary_path: Path | None = None) -> pd.DataFrame:
 
 
 def _extract_device_fields(frame: pd.DataFrame) -> pd.DataFrame:
-    extracted = frame[DEVICE_COL].str.extract(r"^(?P<Technology>\\w+)(?:\\s+(?P<Capacity>[0-9.]+))?", expand=True)
+    extracted = frame[DEVICE_COL].str.extract(
+        r"^(?P<Technology>\\w+)(?:\\s+(?P<Capacity>[0-9.]+))?", expand=True
+    )
     frame = frame.copy()
     frame["Technology"] = extracted["Technology"]
     frame["Capacity kW"] = pd.to_numeric(extracted["Capacity"], errors="coerce")
     return frame
+
+
+def _normalise_tariff(values: pd.Series) -> pd.Series:
+    """Coerce tariff labels into the Flat/Time-of-use buckets used downstream."""
+
+    def _bucket(value: str) -> str:
+        text = str(value).strip().lower()
+        if "flat" in text:
+            return "Flat"
+        if "time" in text or "tou" in text:
+            return "Time-of-use"
+        # Fall back to the original value so unexpected labels are still visible.
+        return str(value)
+
+    return values.apply(_bucket)
 
 
 def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
@@ -71,18 +88,34 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
         raise KeyError(f"'{PEAK_COL}' column is required in the metrics table")
 
     extreme = metrics.loc[metrics[WEATHER_COL].str.lower() == "extreme"].copy()
-    extreme = _extract_device_fields(extreme)
+    if extreme.empty:
+        return pd.DataFrame(
+            columns=[
+                "Dwelling ID",
+                "Technology",
+                "Capacity kW",
+                "Flat",
+                "Time-of-use",
+                R_COL,
+                C_COL,
+                G_COL,
+                REDUCTION_COL,
+                THERMAL_CONSTANT_COL,
+            ]
+        )
 
-    index_cols = [
-        "Dwelling ID",
-        "Technology",
-        "Capacity kW",
-        R_COL,
-        C_COL,
-        G_COL,
-    ]
+    extreme = _extract_device_fields(extreme)
+    extreme[TARIFF_COL] = _normalise_tariff(extreme[TARIFF_COL])
+
+    index_cols = ["Dwelling ID", "Technology", "Capacity kW"]
+
     pivot = (
-        extreme.pivot_table(index=index_cols, columns=TARIFF_COL, values=PEAK_COL, aggfunc="first")
+        extreme.pivot_table(
+            index=index_cols,
+            columns=TARIFF_COL,
+            values=PEAK_COL,
+            aggfunc="first",
+        )
         .reset_index()
         .rename_axis(columns=None)
     )
@@ -90,6 +123,11 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
     for tariff in ("Flat", "Time-of-use"):
         if tariff not in pivot.columns:
             pivot[tariff] = float("nan")
+
+    parameters = (
+        extreme.groupby(index_cols, as_index=False)[[R_COL, C_COL, G_COL]].first()
+    )
+    pivot = pivot.merge(parameters, on=index_cols, how="left")
 
     pivot = pivot.dropna(subset=["Flat", "Time-of-use"])
 
