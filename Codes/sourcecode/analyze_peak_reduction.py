@@ -102,12 +102,26 @@ def load_metrics(summary_path: Path | None = None) -> pd.DataFrame:
 
 
 def _extract_device_fields(frame: pd.DataFrame) -> pd.DataFrame:
-    extracted = frame[DEVICE_COL].str.extract(
-        r"^(?P<Technology>\\w+)(?:\\s+(?P<Capacity>[0-9.]+))?", expand=True
-    )
+    """Split the device description into technology and numeric capacity."""
+
     frame = frame.copy()
-    frame["Technology"] = extracted["Technology"]
-    frame["Capacity kW"] = pd.to_numeric(extracted["Capacity"], errors="coerce")
+
+    technology = frame[DEVICE_COL].str.extract(r"(HHP|mHP)", expand=False)
+    fallback_tech = frame[DEVICE_COL].str.split().str[0]
+    frame["Technology"] = technology.fillna(fallback_tech)
+
+    capacity_kw = frame[DEVICE_COL].str.extract(
+        r"([0-9]+(?:\.[0-9]+)?)\s*kW",
+        expand=False,
+    )
+    if capacity_kw.isna().any():
+        loose_match = frame[DEVICE_COL].str.extract(
+            r"([0-9]+(?:\.[0-9]+)?)",
+            expand=False,
+        )
+        capacity_kw = capacity_kw.fillna(loose_match)
+
+    frame["Capacity kW"] = pd.to_numeric(capacity_kw, errors="coerce")
     return frame
 
 
@@ -132,7 +146,8 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
     if PEAK_COL not in metrics.columns:
         raise KeyError(f"'{PEAK_COL}' column is required in the metrics table")
 
-    extreme = metrics.loc[metrics[WEATHER_COL].str.lower() == "extreme"].copy()
+    weather_series = metrics[WEATHER_COL].astype(str).str.strip().str.lower()
+    extreme = metrics.loc[weather_series == "extreme"].copy()
     if extreme.empty:
         return pd.DataFrame(
             columns=[
@@ -154,10 +169,11 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
 
     index_cols = [DWELLING_COL, "Technology", "Capacity kW"]
 
-    aggregated = (
-        extreme.groupby(index_cols + [TARIFF_COL], as_index=False)[PEAK_COL]
-        .first()
-    )
+    grouped = extreme.groupby(
+        index_cols + [TARIFF_COL],
+        dropna=False,
+    )[PEAK_COL]
+    aggregated = grouped.mean().reset_index()
 
     pivot = (
         aggregated.pivot(index=index_cols, columns=TARIFF_COL, values=PEAK_COL)
@@ -167,7 +183,7 @@ def compute_peak_reduction(metrics: pd.DataFrame) -> pd.DataFrame:
     )
 
     parameters = (
-        extreme.groupby(index_cols, as_index=False)[[R_COL, C_COL, G_COL]].first()
+        extreme.groupby(index_cols, dropna=False)[[R_COL, C_COL, G_COL]].first().reset_index()
     )
     pivot = pivot.merge(parameters, on=index_cols, how="left")
 
