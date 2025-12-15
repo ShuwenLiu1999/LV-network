@@ -388,8 +388,9 @@ def optimize_full_energy_system(
         res["Q_bo_space"] = [Q_bo_space[t].X for t in range(T)]
         res["Q_hp_hw"] = [Q_hp_hw[t].X for t in range(T)]
         res["Q_bo_hw"] = [Q_bo_hw[t].X for t in range(T)]
-        res["elec_cost"] = [float(elec_cost[t]) for t in range(T)]
-        res["gas_cost"] = [float(gas_cost[t]) for t in range(T)]
+        # Convert LinExpr objects to numeric values post-optimization
+        res["elec_cost"] = [float(elec_cost[t].getValue()) for t in range(T)]
+        res["gas_cost"] = [float(gas_cost[t].getValue()) for t in range(T)]
 
         if P_ev_charge is not None:
             res["P_ev_charge"] = [P_ev_charge[t].X for t in range(T)]
