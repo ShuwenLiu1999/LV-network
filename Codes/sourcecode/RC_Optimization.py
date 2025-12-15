@@ -225,6 +225,13 @@ def optimize_full_energy_system(
     etaB: float,
     Qhp_max: float,
     Qbo_max: float,
+    hw_mode: str = "hybrid_direct",
+    V_stor: float | None = None,
+    C_hw: float = 4180.0,
+    T_stor_init: float | None = None,
+    T_mains: float = 10.0,
+    T_stor_max: float = 50.0,
+    eta_hw_store: float = 1.0,
     hw_demand: np.ndarray | None = None,
     base_electric: np.ndarray | None = None,
     ev_capacity: float | None = None,
@@ -261,6 +268,23 @@ def optimize_full_energy_system(
         Boiler efficiency (thermal output / fuel input).
     Qhp_max, Qbo_max : float
         Maximum thermal output (W) for heat pump and boiler respectively.
+    hw_mode : {"hybrid_direct", "boiler_only", "hp_storage"}, default "hybrid_direct"
+        Hot water configuration. Use ``"boiler_only"`` for HHP dwellings without
+        storage (all DHW from the boiler), and ``"hp_storage"`` for mHP dwellings
+        with a storage tank as in constraints (7*), (10*), (10**). The default
+        keeps the prior direct split between heat pump and boiler.
+    V_stor : float, optional
+        Storage tank volume (m^3). Required when ``hw_mode='hp_storage'``.
+    C_hw : float, default 4180.0
+        Volumetric heat capacity of water (J/(kg*K)) used for the tank balance.
+    T_stor_init : float, optional
+        Initial storage temperature (degC). Defaults to ``T_mains``.
+    T_mains : float, default 10.0
+        Incoming mains temperature lower bound for the storage tank.
+    T_stor_max : float, default 50.0
+        Maximum allowable storage temperature (degC).
+    eta_hw_store : float, default 1.0
+        Discharge efficiency applied to hot water draws from the tank.
     hw_demand : np.ndarray, optional
         Thermal hot water demand (W). Defaults to zeros if omitted.
     base_electric : np.ndarray, optional
@@ -289,7 +313,20 @@ def optimize_full_energy_system(
         contains the minimum‑cost schedule.
     """
 
-    def _solve_single_schedule(tariff_sub, Tout_sub, S_sub, T_set_sub, tol_sub, T0_sub, soc0):
+    valid_hw_modes = {"hybrid_direct", "boiler_only", "hp_storage"}
+    hw_mode = hw_mode.lower()
+    if hw_mode not in valid_hw_modes:
+        raise ValueError(f"hw_mode must be one of {valid_hw_modes}")
+
+    use_storage = hw_mode == "hp_storage"
+    boiler_only_hw = hw_mode == "boiler_only"
+
+    if use_storage and V_stor is None:
+        raise ValueError("V_stor must be provided when hw_mode='hp_storage'")
+
+    T_stor_initial = T_stor_init if T_stor_init is not None else T_mains
+
+    def _solve_single_schedule(tariff_sub, Tout_sub, S_sub, T_set_sub, tol_sub, T0_sub, soc0, T_stor0):
         T = len(tariff_sub)
         dt_hours = dt / 3600.0
         tol_arr = tol_sub if np.ndim(tol_sub) > 0 else np.full(T, tol_sub)
@@ -305,10 +342,14 @@ def optimize_full_energy_system(
 
         # Thermal variables
         Q_hp_space = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp_space")
-        Q_bo_space = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo_space")
-        Q_hp_hw = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp_hw")
-        Q_bo_hw = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo_hw")
+        Q_bo_space = m.addVars(T, lb=0, ub=0.0 if use_storage else Qbo_max, name="Q_bo_space")
+        Q_hp_hw = m.addVars(T, lb=0, ub=Qhp_max if not boiler_only_hw else 0.0, name="Q_hp_hw")
+        Q_bo_hw = m.addVars(T, lb=0, ub=0.0 if use_storage else Qbo_max, name="Q_bo_hw")
         Tin = m.addVars(T, lb=-GRB.INFINITY, name="Tin")
+
+        if use_storage:
+            T_stor = m.addVars(T, lb=T_mains, ub=T_stor_max, name="T_stor")
+            m.addConstr(T_stor[0] == T_stor0, name="stor_init")
 
         # EV variables (kW for power, kWh for energy)
         if ev_capacity is not None and ev_capacity > 0:
@@ -347,6 +388,13 @@ def optimize_full_energy_system(
                 name=f"temp_dyn_{t}",
             )
 
+            if use_storage:
+                m.addConstr(
+                    V_stor * C_hw * (T_stor[t] - T_stor[t - 1])
+                    == Q_hp_hw[t - 1] * dt - eta_hw_store * hw_profile[t - 1] * dt,
+                    name=f"stor_dyn_{t}",
+                )
+
         # Comfort constraints
         for t in range(T):
             m.addConstr(Tin[t] >= T_low[t], name=f"Tin_min_{t}")
@@ -357,8 +405,13 @@ def optimize_full_energy_system(
             m.addConstr(Q_hp_space[t] + Q_hp_hw[t] <= Qhp_max, name=f"Qhp_cap_{t}")
             m.addConstr(Q_bo_space[t] + Q_bo_hw[t] <= Qbo_max, name=f"Qbo_cap_{t}")
 
-            # Hot water demand must be met
-            m.addConstr(Q_hp_hw[t] + Q_bo_hw[t] >= hw_profile[t], name=f"HW_demand_{t}")
+            # Hot water handling
+            if use_storage:
+                m.addConstr(T_stor[t] >= T_mains, name=f"stor_min_{t}")
+                m.addConstr(T_stor[t] <= T_stor_max, name=f"stor_max_{t}")
+            else:
+                # Direct supply, potentially boiler-only
+                m.addConstr(Q_hp_hw[t] + Q_bo_hw[t] >= hw_profile[t], name=f"HW_demand_{t}")
 
         # EV charging dynamics
         if P_ev_charge is not None:
@@ -388,6 +441,7 @@ def optimize_full_energy_system(
         res["Q_bo_space"] = [Q_bo_space[t].X for t in range(T)]
         res["Q_hp_hw"] = [Q_hp_hw[t].X for t in range(T)]
         res["Q_bo_hw"] = [Q_bo_hw[t].X for t in range(T)]
+        res["T_stor"] = [T_stor[t].X for t in range(T)] if use_storage else [np.nan for _ in range(T)]
         # Convert LinExpr objects to numeric values post-optimization
         res["elec_cost"] = [float(elec_cost[t].getValue()) for t in range(T)]
         res["gas_cost"] = [float(gas_cost[t].getValue()) for t in range(T)]
@@ -400,7 +454,13 @@ def optimize_full_energy_system(
             res["ev_soc"] = 0.0
 
         total_cost = res["elec_cost"].sum() + res["gas_cost"].sum()
-        return res, total_cost, res["Tin"].iat[-1], res["ev_soc"].iat[-1] if P_ev_charge is not None else 0.0
+        return (
+            res,
+            total_cost,
+            res["Tin"].iat[-1],
+            res["ev_soc"].iat[-1] if P_ev_charge is not None else 0.0,
+            res["T_stor"].iat[-1] if use_storage else T_stor0,
+        )
 
     # --- Input validation and defaults ---
     n_steps = len(tariff)
@@ -430,11 +490,12 @@ def optimize_full_energy_system(
         for idx, sched in enumerate(schedules):
             T_curr = T0
             ev_soc_curr = 0.0
+            T_stor_curr = T_stor_initial
             day_frames = []
             day_costs = []
             for day in days:
                 mask = norm_idx == day
-                res, cost, T_curr, ev_soc_curr = _solve_single_schedule(
+                res, cost, T_curr, ev_soc_curr, T_stor_curr = _solve_single_schedule(
                     tariff.loc[mask],
                     Tout[mask],
                     S[mask],
@@ -442,9 +503,11 @@ def optimize_full_energy_system(
                     tol_full[mask],
                     T_curr,
                     ev_soc_curr,
+                    T_stor_curr,
                 )
                 day_frames.append(res)
                 day_costs.append(cost)
+                T_stor_curr = res["T_stor"].iat[-1] if use_storage else T_stor_curr
             df_all = pd.concat(day_frames).loc[tariff.index]
             total_cost = float(np.sum(day_costs))
             key = f"schedule_{idx}"
@@ -454,7 +517,7 @@ def optimize_full_energy_system(
                 best_key = key
     else:
         for idx, sched in enumerate(schedules):
-            res, total_cost, _, _ = _solve_single_schedule(
+            res, total_cost, _, _, _ = _solve_single_schedule(
                 tariff,
                 Tout,
                 S,
@@ -462,6 +525,7 @@ def optimize_full_energy_system(
                 tol,
                 T0,
                 0.0,
+                T_stor_initial,
             )
             key = f"schedule_{idx}"
             results[key] = {"results": res, "cost": float(total_cost)}
