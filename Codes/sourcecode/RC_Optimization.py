@@ -210,6 +210,269 @@ def optimize_hhp_operation(
     return _single_dispatch(R1, C1, g, tariff, Tout, S, dt, T0, T_setpoint, tol, COP, etaB, Qhp_max, Qbo_max)
 
 
+def optimize_full_energy_system(
+    R1: float,
+    C1: float,
+    g: float,
+    tariff: pd.DataFrame,
+    Tout: np.ndarray,
+    S: np.ndarray,
+    dt: float,
+    T0: float,
+    setpoint_sequences: list[np.ndarray] | np.ndarray,
+    tol: float | np.ndarray,
+    COP: float,
+    etaB: float,
+    Qhp_max: float,
+    Qbo_max: float,
+    hw_demand: np.ndarray | None = None,
+    base_electric: np.ndarray | None = None,
+    ev_capacity: float | None = None,
+    ev_target: float = 0.0,
+    ev_charge_max: float | None = None,
+    ev_availability: np.ndarray | None = None,
+    eta_ev_charge: float = 0.95,
+    day_ahead: bool = False,
+) -> dict:
+    """
+    Solve the full optimization problem including hot water demand, EV charging,
+    and different daily temperature set‑point sequences.
+
+    Parameters
+    ----------
+    R1, C1, g : float
+        RC thermal parameters and solar gain factor.
+    tariff : pd.DataFrame
+        Must contain ``elec_price`` and ``gas_price`` indexed by time.
+    Tout, S : np.ndarray
+        Outdoor temperature and solar irradiance aligned with ``tariff``.
+    dt : float
+        Time step in seconds.
+    T0 : float
+        Initial indoor temperature.
+    setpoint_sequences : list[np.ndarray] | np.ndarray
+        Either a single array (used directly) or a list of candidate set-point
+        sequences. Each entry must match ``len(tariff)``.
+    tol : float | np.ndarray
+        Comfort tolerance (scalar or array matching the horizon).
+    COP : float
+        Heat pump coefficient of performance.
+    etaB : float
+        Boiler efficiency (thermal output / fuel input).
+    Qhp_max, Qbo_max : float
+        Maximum thermal output (W) for heat pump and boiler respectively.
+    hw_demand : np.ndarray, optional
+        Thermal hot water demand (W). Defaults to zeros if omitted.
+    base_electric : np.ndarray, optional
+        Other electric demand (W). Defaults to zeros if omitted.
+    ev_capacity : float, optional
+        EV battery capacity (kWh). If ``None`` EV charging is disabled.
+    ev_target : float, default 0.0
+        Minimum EV state of charge (kWh) required at the end of the horizon.
+    ev_charge_max : float, optional
+        Maximum EV charging power (kW). Defaults to ``ev_capacity`` if not
+        provided.
+    ev_availability : np.ndarray, optional
+        Binary mask (1/0) indicating when the EV is at home and can charge.
+        Defaults to always available.
+    eta_ev_charge : float, default 0.95
+        Charging efficiency.
+    day_ahead : bool, default False
+        If True, solve one optimization per day carrying indoor temperature and
+        EV state of charge to the next day.
+
+    Returns
+    -------
+    dict
+        Dictionary keyed by set-point label (``schedule_0``, ``schedule_1``, …)
+        containing the resulting ``DataFrame`` and cost. The entry ``"best"``
+        contains the minimum‑cost schedule.
+    """
+
+    def _solve_single_schedule(tariff_sub, Tout_sub, S_sub, T_set_sub, tol_sub, T0_sub, soc0):
+        T = len(tariff_sub)
+        dt_hours = dt / 3600.0
+        tol_arr = tol_sub if np.ndim(tol_sub) > 0 else np.full(T, tol_sub)
+        T_low = np.where(T_set_sub >= 19.0, T_set_sub - tol_arr, 15.0)
+        T_high = np.where(T_set_sub >= 19.0, T_set_sub + tol_arr, np.nan)
+
+        hw_profile = hw_demand_sub if hw_demand_sub is not None else np.zeros(T)
+        base_elec_profile = base_electric_sub if base_electric_sub is not None else np.zeros(T)
+        ev_mask = ev_availability_sub if ev_availability_sub is not None else np.ones(T)
+
+        m = gp.Model("full_energy_system")
+        m.Params.OutputFlag = 0
+
+        # Thermal variables
+        Q_hp_space = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp_space")
+        Q_bo_space = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo_space")
+        Q_hp_hw = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp_hw")
+        Q_bo_hw = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo_hw")
+        Tin = m.addVars(T, lb=-GRB.INFINITY, name="Tin")
+
+        # EV variables (kW for power, kWh for energy)
+        if ev_capacity is not None and ev_capacity > 0:
+            ev_power_cap = ev_charge_max if ev_charge_max is not None else ev_capacity
+            P_ev_charge = m.addVars(T, lb=0, ub=ev_power_cap, name="P_ev_charge")
+            ev_soc = m.addVars(T, lb=0, ub=ev_capacity, name="ev_soc")
+        else:
+            P_ev_charge = None
+            ev_soc = None
+
+        # Objective: electricity + gas cost
+        elec_cost = []
+        gas_cost = []
+        for t in range(T):
+            heat_pump_elec = (Q_hp_space[t] + Q_hp_hw[t]) / COP
+            other_elec = base_elec_profile[t]
+            ev_elec = P_ev_charge[t] if P_ev_charge is not None else 0.0
+            elec_cost.append((heat_pump_elec + other_elec + ev_elec) * tariff_sub["elec_price"].iat[t] * dt_hours)
+
+            gas_cost.append(((Q_bo_space[t] + Q_bo_hw[t]) / etaB) * tariff_sub["gas_price"].iat[t] * dt_hours)
+
+        m.setObjective(gp.quicksum(elec_cost) + gp.quicksum(gas_cost), GRB.MINIMIZE)
+
+        # Indoor temperature dynamics
+        m.addConstr(Tin[0] == T0_sub, name="init_temp")
+        for t in range(1, T):
+            m.addConstr(
+                Tin[t] == Tin[t - 1]
+                + (dt / C1)
+                * (
+                    Q_hp_space[t - 1]
+                    + Q_bo_space[t - 1]
+                    + g * S_sub[t - 1]
+                    - (Tin[t - 1] - Tout_sub[t - 1]) / R1
+                ),
+                name=f"temp_dyn_{t}",
+            )
+
+        # Comfort constraints
+        for t in range(T):
+            m.addConstr(Tin[t] >= T_low[t], name=f"Tin_min_{t}")
+            if not np.isnan(T_high[t]):
+                m.addConstr(Tin[t] <= T_high[t], name=f"Tin_max_{t}")
+
+            # Total HP/boiler output cannot exceed capacity when combining space + HW
+            m.addConstr(Q_hp_space[t] + Q_hp_hw[t] <= Qhp_max, name=f"Qhp_cap_{t}")
+            m.addConstr(Q_bo_space[t] + Q_bo_hw[t] <= Qbo_max, name=f"Qbo_cap_{t}")
+
+            # Hot water demand must be met
+            m.addConstr(Q_hp_hw[t] + Q_bo_hw[t] >= hw_profile[t], name=f"HW_demand_{t}")
+
+        # EV charging dynamics
+        if P_ev_charge is not None:
+            m.addConstr(ev_soc[0] == soc0, name="ev_soc0")
+            for t in range(T):
+                m.addConstr(P_ev_charge[t] <= ev_power_cap * ev_mask[t], name=f"ev_avail_{t}")
+                if t > 0:
+                    m.addConstr(
+                        ev_soc[t]
+                        == ev_soc[t - 1]
+                        + P_ev_charge[t] * dt_hours * eta_ev_charge,
+                        name=f"ev_soc_dyn_{t}",
+                    )
+            m.addConstr(ev_soc[T - 1] >= ev_target, name="ev_target_end")
+
+        m.optimize()
+        if m.Status != GRB.OPTIMAL:
+            raise RuntimeError(f"Gurobi failed on full problem. Status {m.Status}")
+
+        # Extract results
+        res = pd.DataFrame(index=tariff_sub.index)
+        res["Tin"] = [Tin[t].X for t in range(T)]
+        res["T_set"] = T_set_sub
+        res["T_low"] = T_low
+        res["T_high"] = T_high
+        res["Q_hp_space"] = [Q_hp_space[t].X for t in range(T)]
+        res["Q_bo_space"] = [Q_bo_space[t].X for t in range(T)]
+        res["Q_hp_hw"] = [Q_hp_hw[t].X for t in range(T)]
+        res["Q_bo_hw"] = [Q_bo_hw[t].X for t in range(T)]
+        res["elec_cost"] = [float(elec_cost[t]) for t in range(T)]
+        res["gas_cost"] = [float(gas_cost[t]) for t in range(T)]
+
+        if P_ev_charge is not None:
+            res["P_ev_charge"] = [P_ev_charge[t].X for t in range(T)]
+            res["ev_soc"] = [ev_soc[t].X for t in range(T)]
+        else:
+            res["P_ev_charge"] = 0.0
+            res["ev_soc"] = 0.0
+
+        total_cost = res["elec_cost"].sum() + res["gas_cost"].sum()
+        return res, total_cost, res["Tin"].iat[-1], res["ev_soc"].iat[-1] if P_ev_charge is not None else 0.0
+
+    # --- Input validation and defaults ---
+    n_steps = len(tariff)
+    Tout = np.asarray(Tout)
+    S = np.asarray(S)
+    if len(Tout) != n_steps or len(S) != n_steps:
+        raise ValueError("Tout, S, and tariff must have matching lengths")
+
+    hw_demand_sub = None if hw_demand is None else np.asarray(hw_demand)
+    base_electric_sub = None if base_electric is None else np.asarray(base_electric)
+    ev_availability_sub = None if ev_availability is None else np.asarray(ev_availability)
+
+    if isinstance(setpoint_sequences, np.ndarray) and setpoint_sequences.ndim == 1:
+        schedules = [setpoint_sequences]
+    else:
+        schedules = list(setpoint_sequences)
+
+    results = {}
+    best_cost = np.inf
+    best_key = None
+
+    if day_ahead:
+        # solve one day at a time for each schedule
+        days = tariff.index.normalize().unique()
+        tol_full = tol if np.ndim(tol) > 0 else np.full(n_steps, tol)
+        norm_idx = tariff.index.normalize()
+        for idx, sched in enumerate(schedules):
+            T_curr = T0
+            ev_soc_curr = 0.0
+            day_frames = []
+            day_costs = []
+            for day in days:
+                mask = norm_idx == day
+                res, cost, T_curr, ev_soc_curr = _solve_single_schedule(
+                    tariff.loc[mask],
+                    Tout[mask],
+                    S[mask],
+                    np.asarray(sched)[mask],
+                    tol_full[mask],
+                    T_curr,
+                    ev_soc_curr,
+                )
+                day_frames.append(res)
+                day_costs.append(cost)
+            df_all = pd.concat(day_frames).loc[tariff.index]
+            total_cost = float(np.sum(day_costs))
+            key = f"schedule_{idx}"
+            results[key] = {"results": df_all, "cost": total_cost}
+            if total_cost < best_cost:
+                best_cost = total_cost
+                best_key = key
+    else:
+        for idx, sched in enumerate(schedules):
+            res, total_cost, _, _ = _solve_single_schedule(
+                tariff,
+                Tout,
+                S,
+                np.asarray(sched),
+                tol,
+                T0,
+                0.0,
+            )
+            key = f"schedule_{idx}"
+            results[key] = {"results": res, "cost": float(total_cost)}
+            if total_cost < best_cost:
+                best_cost = float(total_cost)
+                best_key = key
+
+    if best_key is not None:
+        results["best"] = results[best_key]
+    return results
+
+
 # Function to generate a daily tariff DataFrame with electricity and gas prices
 def build_tariff(start_date,n_days,step="30min",type:str="cosy"):
     if type == "flat":
