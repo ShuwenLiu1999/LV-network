@@ -470,7 +470,10 @@ def optimize_full_energy_system(
                 best_key = key
 
     if best_key is not None:
-        results["best"] = results[best_key]
+        # Return both the key for the lowest-cost schedule and its data to avoid
+        # ambiguity when users access the results dictionary.
+        results["best_key"] = best_key
+        results["best_result"] = results[best_key]
     return results
 
 
