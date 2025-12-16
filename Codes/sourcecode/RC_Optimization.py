@@ -228,9 +228,11 @@ def optimize_full_energy_system(
     hw_mode: str = "hybrid_direct",
     V_stor: float | None = None,
     C_hw: float = 4180.0,
+    rho_hw: float = 1000.0,
+    T_hw_supply: float = 40.0,
     T_stor_init: float | None = None,
     T_mains: float = 10.0,
-    T_stor_max: float = 50.0,
+    T_stor_max: float = 55.0,
     eta_hw_store: float = 1.0,
     hw_demand: np.ndarray | None = None,
     base_electric: np.ndarray | None = None,
@@ -276,17 +278,23 @@ def optimize_full_energy_system(
     V_stor : float, optional
         Storage tank volume (m^3). Required when ``hw_mode='hp_storage'``.
     C_hw : float, default 4180.0
-        Volumetric heat capacity of water (J/(kg*K)) used for the tank balance.
+        Specific heat capacity of water (J/(kg*K)) used for the tank balance.
+    rho_hw : float, default 1000.0
+        Density of water (kg/m^3) for converting volumes to energy.
+    T_hw_supply : float, default 40.0
+        Delivered hot-water temperature (°C). All draws are assumed to leave the
+        cylinder at this temperature.
     T_stor_init : float, optional
         Initial storage temperature (degC). Defaults to ``T_mains``.
     T_mains : float, default 10.0
         Incoming mains temperature lower bound for the storage tank.
-    T_stor_max : float, default 50.0
+    T_stor_max : float, default 55.0
         Maximum allowable storage temperature (degC).
     eta_hw_store : float, default 1.0
         Discharge efficiency applied to hot water draws from the tank.
     hw_demand : np.ndarray, optional
-        Thermal hot water demand (W). Defaults to zeros if omitted.
+        Hot water demand volume per time step (m^3). Defaults to zeros if
+        omitted.
     base_electric : np.ndarray, optional
         Other electric demand (W). Defaults to zeros if omitted.
     ev_capacity : float, optional
@@ -334,6 +342,9 @@ def optimize_full_energy_system(
         T_high = np.where(T_set_sub >= 19.0, T_set_sub + tol_arr, np.nan)
 
         hw_profile = hw_demand_sub if hw_demand_sub is not None else np.zeros(T)
+        delta_T_hw = T_hw_supply - T_mains
+        hw_draw_energy = hw_profile * delta_T_hw * C_hw * rho_hw  # Joules per step
+        hw_draw_power = hw_draw_energy / dt  # W equivalent if delivered directly
         base_elec_profile = base_electric_sub if base_electric_sub is not None else np.zeros(T)
         ev_mask = ev_availability_sub if ev_availability_sub is not None else np.ones(T)
 
@@ -390,8 +401,8 @@ def optimize_full_energy_system(
 
             if use_storage:
                 m.addConstr(
-                    V_stor * C_hw * (T_stor[t] - T_stor[t - 1])
-                    == Q_hp_hw[t - 1] * dt - eta_hw_store * hw_profile[t - 1] * dt,
+                    C_hw * rho_hw * V_stor * (T_stor[t] - T_stor[t - 1])
+                    == Q_hp_hw[t - 1] * dt - eta_hw_store * hw_draw_energy[t - 1],
                     name=f"stor_dyn_{t}",
                 )
 
@@ -407,11 +418,11 @@ def optimize_full_energy_system(
 
             # Hot water handling
             if use_storage:
-                m.addConstr(T_stor[t] >= T_mains, name=f"stor_min_{t}")
+                m.addConstr(T_stor[t] >= max(T_mains, T_hw_supply), name=f"stor_min_{t}")
                 m.addConstr(T_stor[t] <= T_stor_max, name=f"stor_max_{t}")
             else:
                 # Direct supply, potentially boiler-only
-                m.addConstr(Q_hp_hw[t] + Q_bo_hw[t] >= hw_profile[t], name=f"HW_demand_{t}")
+                m.addConstr(Q_hp_hw[t] + Q_bo_hw[t] >= hw_draw_power[t], name=f"HW_demand_{t}")
 
         # EV charging dynamics
         if P_ev_charge is not None:
