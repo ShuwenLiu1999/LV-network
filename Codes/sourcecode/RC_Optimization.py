@@ -227,6 +227,7 @@ def optimize_full_energy_system(
     Qbo_max: float,
     hw_mode: str = "hybrid_direct",
     V_stor: float | None = None,
+    V_stor_init: float | None = None,
     C_hw: float = 4180.0,
     rho_hw: float = 1000.0,
     T_hw_supply: float = 40.0,
@@ -276,9 +277,11 @@ def optimize_full_energy_system(
         with a storage tank as in constraints (7*), (10*), (10**). The default
         keeps the prior direct split between heat pump and boiler.
     V_stor : float, optional
-        Legacy storage tank volume (m^3). Retained for API compatibility but
-        not used when ``hw_mode='hp_storage'`` now pins the cylinder to a fixed
-        temperature per constraint (10**).
+        Storage tank volume capacity (m^3) when ``hw_mode='hp_storage'``.
+        Required for the volume-based storage formulation.
+    V_stor_init : float, optional
+        Initial stored hot-water volume (m^3). Defaults to ``V_stor`` if not
+        provided.
     C_hw : float, default 4180.0
         Specific heat capacity of water (J/(kg*K)) used for the tank balance.
     rho_hw : float, default 1000.0
@@ -332,7 +335,12 @@ def optimize_full_energy_system(
     use_storage = hw_mode == "hp_storage"
     boiler_only_hw = hw_mode == "boiler_only"
 
-    def _solve_single_schedule(tariff_sub, Tout_sub, S_sub, T_set_sub, tol_sub, T0_sub, soc0):
+    if use_storage and V_stor is None:
+        raise ValueError("V_stor must be provided when hw_mode='hp_storage'")
+
+    def _solve_single_schedule(
+        tariff_sub, Tout_sub, S_sub, T_set_sub, tol_sub, T0_sub, soc0, vstor0
+    ):
         T = len(tariff_sub)
         dt_hours = dt / 3600.0
         tol_arr = tol_sub if np.ndim(tol_sub) > 0 else np.full(T, tol_sub)
@@ -358,10 +366,26 @@ def optimize_full_energy_system(
 
         if use_storage:
             T_stor = m.addVars(T, lb=T_stor_max, ub=T_stor_max, name="T_stor")
-            # For the storage-cylinder case, DHW is supplied at a fixed tank
-            # temperature (constraint 10**), so the tank trajectory is pinned to
-            # the target instead of evolving dynamically.
-            for t in range(T):
+            V_stor_var = m.addVars(T, lb=0.0, ub=V_stor, name="V_stor")
+
+            m.addConstr(V_stor_var[0] == vstor0, name="Vstor_init")
+            m.addConstr(T_stor[0] == T_stor_max, name="stor_fixed_0")
+            m.addConstr(
+                (T_stor_max - T_mains) * C_hw * rho_hw * (V_stor_var[0] - vstor0)
+                == Q_hp_hw[0] * dt - delta_T_hw * C_hw * rho_hw * hw_profile[0],
+                name="Vstor_bal_0",
+            )
+            for t in range(1, T):
+                # (10*): storage volume balance with fixed 55°C tank (10**)
+                m.addConstr(
+                    (T_stor_max - T_mains)
+                    * C_hw
+                    * rho_hw
+                    * (V_stor_var[t] - V_stor_var[t - 1])
+                    == Q_hp_hw[t] * dt
+                    - delta_T_hw * C_hw * rho_hw * hw_profile[t],
+                    name=f"Vstor_bal_{t}",
+                )
                 m.addConstr(T_stor[t] == T_stor_max, name=f"stor_fixed_{t}")
 
         # EV variables (kW for power, kWh for energy)
@@ -412,11 +436,7 @@ def optimize_full_energy_system(
             m.addConstr(Q_bo_space[t] + Q_bo_hw[t] <= Qbo_max, name=f"Qbo_cap_{t}")
 
             # Hot water handling
-            if use_storage:
-                # With a fixed 55°C tank (10**), all DHW energy is provided by
-                # the heat pump. Enforce an equality to the volumetric draw.
-                m.addConstr(Q_hp_hw[t] == hw_draw_power[t], name=f"HW_draw_match_{t}")
-            else:
+            if not use_storage:
                 # Direct supply, potentially boiler-only
                 m.addConstr(Q_hp_hw[t] + Q_bo_hw[t] >= hw_draw_power[t], name=f"HW_demand_{t}")
 
@@ -449,6 +469,7 @@ def optimize_full_energy_system(
         res["Q_hp_hw"] = [Q_hp_hw[t].X for t in range(T)]
         res["Q_bo_hw"] = [Q_bo_hw[t].X for t in range(T)]
         res["T_stor"] = [T_stor[t].X for t in range(T)] if use_storage else [np.nan for _ in range(T)]
+        res["V_stor"] = [V_stor_var[t].X for t in range(T)] if use_storage else [np.nan for _ in range(T)]
         # Convert LinExpr objects to numeric values post-optimization
         res["elec_cost"] = [float(elec_cost[t].getValue()) for t in range(T)]
         res["gas_cost"] = [float(gas_cost[t].getValue()) for t in range(T)]
@@ -466,6 +487,7 @@ def optimize_full_energy_system(
             total_cost,
             res["Tin"].iat[-1],
             res["ev_soc"].iat[-1] if P_ev_charge is not None else 0.0,
+            res["V_stor"].iat[-1] if use_storage else 0.0,
         )
 
     # --- Input validation and defaults ---
@@ -488,6 +510,12 @@ def optimize_full_energy_system(
     best_cost = np.inf
     best_key = None
 
+    vstor_initial = (
+        V_stor_init if V_stor_init is not None else (V_stor if V_stor is not None else 0.0)
+    )
+    if use_storage and (vstor_initial < 0 or vstor_initial > V_stor):
+        raise ValueError("V_stor_init must lie within [0, V_stor] when using storage")
+
     if day_ahead:
         # solve one day at a time for each schedule
         days = tariff.index.normalize().unique()
@@ -496,11 +524,12 @@ def optimize_full_energy_system(
         for idx, sched in enumerate(schedules):
             T_curr = T0
             ev_soc_curr = 0.0
+            vstor_curr = vstor_initial
             day_frames = []
             day_costs = []
             for day in days:
                 mask = norm_idx == day
-                res, cost, T_curr, ev_soc_curr = _solve_single_schedule(
+                res, cost, T_curr, ev_soc_curr, vstor_curr = _solve_single_schedule(
                     tariff.loc[mask],
                     Tout[mask],
                     S[mask],
@@ -508,9 +537,11 @@ def optimize_full_energy_system(
                     tol_full[mask],
                     T_curr,
                     ev_soc_curr,
+                    vstor_curr,
                 )
                 day_frames.append(res)
                 day_costs.append(cost)
+                vstor_curr = res["V_stor"].iat[-1]
             df_all = pd.concat(day_frames).loc[tariff.index]
             total_cost = float(np.sum(day_costs))
             key = f"schedule_{idx}"
@@ -528,6 +559,7 @@ def optimize_full_energy_system(
                 tol,
                 T0,
                 0.0,
+                vstor_initial,
             )
             key = f"schedule_{idx}"
             results[key] = {"results": res, "cost": float(total_cost)}
