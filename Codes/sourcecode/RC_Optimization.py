@@ -523,7 +523,7 @@ def optimize_full_energy_system(
         norm_idx = tariff.index.normalize()
         for idx, sched in enumerate(schedules):
             T_curr = T0
-            ev_soc_curr = 0.0
+            ev_soc_curr = ev_capacity if ev_capacity is not None else 0.0
             vstor_curr = vstor_initial
             day_frames = []
             day_costs = []
@@ -558,7 +558,7 @@ def optimize_full_energy_system(
                 np.asarray(sched),
                 tol,
                 T0,
-                0.0,
+                ev_capacity if ev_capacity is not None else 0.0,
                 vstor_initial,
             )
             key = f"schedule_{idx}"
