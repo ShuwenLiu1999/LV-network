@@ -241,6 +241,7 @@ def optimize_full_energy_system(
     ev_target: float = 0.0,
     ev_charge_max: float | None = None,
     ev_availability: np.ndarray | None = None,
+    ev_travel_energy: np.ndarray | None = None,
     eta_ev_charge: float = 0.95,
     day_ahead: bool = False,
 ) -> dict:
@@ -313,6 +314,10 @@ def optimize_full_energy_system(
     ev_availability : np.ndarray, optional
         Binary mask (1/0) indicating when the EV is at home and can charge.
         Defaults to always available.
+    ev_travel_energy : np.ndarray, optional
+        Per-timestep driving energy consumption (kWh) aligned with ``tariff``.
+        Subtracted from state of charge before any charging gain at that step.
+        Defaults to zeros if omitted.
     eta_ev_charge : float, default 0.95
         Charging efficiency.
     day_ahead : bool, default False
@@ -339,7 +344,15 @@ def optimize_full_energy_system(
         raise ValueError("V_stor must be provided when hw_mode='hp_storage'")
 
     def _solve_single_schedule(
-        tariff_sub, Tout_sub, S_sub, T_set_sub, tol_sub, T0_sub, soc0, vstor0
+        tariff_sub,
+        Tout_sub,
+        S_sub,
+        T_set_sub,
+        tol_sub,
+        T0_sub,
+        soc0,
+        travel_energy_sub,
+        vstor0,
     ):
         T = len(tariff_sub)
         dt_hours = dt / 3600.0
@@ -353,6 +366,9 @@ def optimize_full_energy_system(
         hw_draw_power = hw_draw_energy / dt  # W equivalent if delivered directly
         base_elec_profile = base_electric_sub if base_electric_sub is not None else np.zeros(T)
         ev_mask = ev_availability_sub if ev_availability_sub is not None else np.ones(T)
+        ev_travel = (
+            travel_energy_sub if travel_energy_sub is not None else np.zeros(T)
+        )
 
         m = gp.Model("full_energy_system")
         m.Params.OutputFlag = 0
@@ -442,14 +458,21 @@ def optimize_full_energy_system(
 
         # EV charging dynamics
         if P_ev_charge is not None:
-            m.addConstr(ev_soc[0] == soc0, name="ev_soc0")
             for t in range(T):
                 m.addConstr(P_ev_charge[t] <= ev_power_cap * ev_mask[t], name=f"ev_avail_{t}")
-                if t > 0:
+                charge_gain = P_ev_charge[t] * dt_hours * eta_ev_charge
+                travel_loss = ev_travel[t]
+                if t == 0:
+                    m.addConstr(
+                        ev_soc[0] == soc0 + charge_gain - travel_loss,
+                        name="ev_soc0",
+                    )
+                else:
                     m.addConstr(
                         ev_soc[t]
                         == ev_soc[t - 1]
-                        + P_ev_charge[t] * dt_hours * eta_ev_charge,
+                        + charge_gain
+                        - travel_loss,
                         name=f"ev_soc_dyn_{t}",
                     )
             m.addConstr(ev_soc[T - 1] >= ev_target, name="ev_target_end")
@@ -500,11 +523,15 @@ def optimize_full_energy_system(
     hw_demand_sub = None if hw_demand is None else np.asarray(hw_demand)
     base_electric_sub = None if base_electric is None else np.asarray(base_electric)
     ev_availability_sub = None if ev_availability is None else np.asarray(ev_availability)
+    ev_travel_sub = None if ev_travel_energy is None else np.asarray(ev_travel_energy)
 
     if isinstance(setpoint_sequences, np.ndarray) and setpoint_sequences.ndim == 1:
         schedules = [setpoint_sequences]
     else:
         schedules = list(setpoint_sequences)
+
+    if ev_travel_sub is not None and len(ev_travel_sub) != n_steps:
+        raise ValueError("ev_travel_energy must match length of tariff")
 
     results = {}
     best_cost = np.inf
@@ -533,12 +560,13 @@ def optimize_full_energy_system(
                     tariff.loc[mask],
                     Tout[mask],
                     S[mask],
-                    np.asarray(sched)[mask],
-                    tol_full[mask],
-                    T_curr,
-                    ev_soc_curr,
-                    vstor_curr,
-                )
+                np.asarray(sched)[mask],
+                tol_full[mask],
+                T_curr,
+                ev_soc_curr,
+                ev_travel_sub[mask] if ev_travel_sub is not None else None,
+                vstor_curr,
+            )
                 day_frames.append(res)
                 day_costs.append(cost)
                 vstor_curr = res["V_stor"].iat[-1]
@@ -551,7 +579,7 @@ def optimize_full_energy_system(
                 best_key = key
     else:
         for idx, sched in enumerate(schedules):
-            res, total_cost, _, _ = _solve_single_schedule(
+            res, total_cost, _, _, _ = _solve_single_schedule(
                 tariff,
                 Tout,
                 S,
@@ -559,6 +587,7 @@ def optimize_full_energy_system(
                 tol,
                 T0,
                 ev_capacity if ev_capacity is not None else 0.0,
+                ev_travel_sub,
                 vstor_initial,
             )
             key = f"schedule_{idx}"
