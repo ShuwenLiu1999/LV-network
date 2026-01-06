@@ -53,7 +53,7 @@ class ScenarioMetadata:
     def device_label(self) -> str:
         if math.isnan(self.capacity_kw):
             return self.technology
-        return f"{self.technology} {self.capacity_kw:.2f} kW"
+        return f"{self.technology} {self.capacity_kw:g} kW"
 
 
 def parse_capacity(folder: Path, csv_path: Path, frame: pd.DataFrame) -> float:
@@ -68,11 +68,13 @@ def parse_capacity(folder: Path, csv_path: Path, frame: pd.DataFrame) -> float:
     if match:
         return float(match.group(1))
 
+    decimal_in_folder = re.search(r"(\d+\.\d+)", folder.name)
+    if decimal_in_folder:
+        return float(decimal_in_folder.group(1))
+
     numeric_suffix = re.findall(r"(\d+)", folder.name)
-    if len(numeric_suffix) >= 2:
-        # Treat "HHP_4_24" as 4.24 kW for example.
-        return float(f"{numeric_suffix[0]}.{numeric_suffix[1]}")
     if numeric_suffix:
+        # Folder names like "HHP_4_24" encode the capacity as the first integer token.
         return float(numeric_suffix[0])
 
     return float("nan")
@@ -132,19 +134,37 @@ def compute_metrics(
         records.append(
             {
                 "Dwelling ID": dwelling_id,
-                "Device (HHP/mHP+capacity)": scenario.device_label(),
+                "Device(HHP/mHP+capacity)": scenario.device_label(),
                 "Tariff Type": scenario.tariff,
-                "Weather (mild/extreme)": scenario.weather,
-                "Peak Electricity Consumption (Feb 11 1600-1900) [kWh]": round(peak_kwh, 3),
-                "Total Electricity Consumption (Feb10-12) [kWh]": round(total_elec_kwh, 3),
-                "Total Gas Consumption (Feb10-12) [kWh]": round(total_gas_kwh, 3),
+                "Weather(mild/extreme)": scenario.weather,
+                "Peak Electricity Consumption (Feb 11) 1600-1900": round(peak_kwh, 3),
+                "Total Electricity Consumption (Feb10-12)": round(total_elec_kwh, 3),
+                "Total gas Consumption (Feb10-12)": round(total_gas_kwh, 3),
             }
         )
 
     metrics = pd.DataFrame.from_records(records)
     metrics = metrics.merge(summary, on="Dwelling ID", how="left")
-    metrics.rename(columns={"R1": "R (K/W)", "C1": "C (J/K)", "g": "g (m^2)"}, inplace=True)
-    return metrics
+    metrics.rename(columns={"R1": "R(K/W)", "C1": "C(J/K)", "g": "g(m^2)"}, inplace=True)
+
+    ordered_columns = [
+        "Dwelling ID",
+        "Device(HHP/mHP+capacity)",
+        "Tariff Type",
+        "Weather(mild/extreme)",
+        "Peak Electricity Consumption (Feb 11) 1600-1900",
+        "Total Electricity Consumption (Feb10-12)",
+        "Total gas Consumption (Feb10-12)",
+        "R(K/W)",
+        "C(J/K)",
+        "g(m^2)",
+    ]
+
+    for column in ordered_columns:
+        if column not in metrics.columns:
+            metrics[column] = pd.NA
+
+    return metrics[ordered_columns]
 
 
 def main() -> None:
