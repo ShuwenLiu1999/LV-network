@@ -12,6 +12,8 @@ import numba
 # This is for the RC optimization model
 import RC_Optimization as rc
 
+# This file is designed to undertake the monte-carlo simulation used for eliminating the factor of HHP/MHP location in the LVN.
+
 from Residential_CIGRE_LV_network import R_LV_CIGRE
 
 from Load_aggregation import mc_assign_households, load_aggregation_by_nodes

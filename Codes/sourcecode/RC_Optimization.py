@@ -1,97 +1,10 @@
-import gurobipy as gp
+﻿import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-# This function takes in the parameters for a hybrid heat pump (HHP) operation
-# optimization problem and solve for the solution
-# def optimize_hhp_operation(
-#     R1: float,
-#     C1: float,
-#     g: float,
-#     tariff: pd.DataFrame,
-#     Tout: np.ndarray,
-#     S: np.ndarray,
-#     dt: float,
-#     T0: float,
-#     T_setpoint: np.ndarray,
-#     tol: float | np.ndarray,
-#     COP: float,
-#     etaB: float,
-#     Qhp_max: float,
-#     Qbo_max: float,
-# ) -> pd.DataFrame:
-#     """
-#     Hybrid‐HP dispatch with comfort constraints.
-#     Returns: DataFrame with ['Q_hp','Q_bo','Tin','T_set','T_low','T_high']
-#     """
-#
-#     T = len(tariff)
-#     beta = dt * R1 / (C1 * R1 + dt)
-#
-#     m = gp.Model("hhp_dispatch")
-#     m.Params.OutputFlag = 0
-#
-#     # decision vars
-#     Q_hp = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp")
-#     Q_bo = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo")
-#     Tin  = m.addVars(T, lb=-GRB.INFINITY, name="Tin")
-#
-#     # objective
-#     m.setObjective(
-#         gp.quicksum(
-#             (Q_hp[t]/COP)*tariff['elec_price'].iat[t] +
-#             (Q_bo[t]/etaB)*tariff['gas_price'].iat[t]
-#             for t in range(T)
-#         ),
-#         GRB.MINIMIZE
-#     )
-#
-#     # initial condition
-#     m.addConstr(Tin[0] == T0, name="init_temp")
-#
-#     # dynamics
-#     for t in range(1, T):
-#         m.addConstr(
-#             Tin[t] == Tin[t-1]
-#                       + beta * (
-#                           (Tout[t-1] - Tin[t-1]) / R1
-#                         + Q_hp[t-1]
-#                         + Q_bo[t-1]
-#                         + g * S[t-1]
-#                       ),
-#             name=f"dyn_{t}"
-#         )
-#
-#     # build comfort bands
-#     tol_arr = tol if np.ndim(tol) > 0 else np.full(T, tol)
-#     T_low = np.where(T_setpoint >= 19.0, T_setpoint - tol_arr, 15.0)
-#     T_high = np.where(T_setpoint >= 19.0, T_setpoint + tol_arr, np.nan)  # NaN if no upper bound
-#
-#     for t in range(T):
-#         m.addConstr(Tin[t] >= T_low[t], name=f"tmin_{t}")
-#         if not np.isnan(T_high[t]):
-#             m.addConstr(Tin[t] <= T_high[t], name=f"tmax_{t}")
-#
-#     m.optimize()
-#
-#     if m.Status != GRB.OPTIMAL:
-#         raise RuntimeError(f"Gurobi did not find an optimal solution. Status: {m.Status}")
-#
-#     Qhp_res = np.array([Q_hp[t].X for t in range(T)])
-#     Qbo_res = np.array([Q_bo[t].X for t in range(T)])
-#     Tin_res = np.array([Tin[t].X for t in range(T)])
-#
-#     return pd.DataFrame({
-#         'Q_hp': Qhp_res,
-#         'Q_bo': Qbo_res,
-#         'Tin': Tin_res,
-#         'T_set': T_setpoint,
-#         'T_low': T_low,
-#         'T_high': T_high
-#     }, index=tariff.index)
 
 def optimize_hhp_operation(
     R1: float,
@@ -111,7 +24,7 @@ def optimize_hhp_operation(
     day_ahead: bool = False
 ) -> pd.DataFrame:
     """
-    Hybrid‐HP dispatch with comfort constraints.
+    Hybrid-HP dispatch with comfort constraints.
     If day_ahead=True, solves one optimization per calendar day using only that day's tariff & weather,
     carrying the final indoor temperature forward as the next day's initial condition.
 
@@ -237,12 +150,18 @@ def optimize_full_energy_system(
     eta_hw_store: float = 1.0,
     hw_demand: np.ndarray | None = None,
     base_electric: np.ndarray | None = None,
+    thermal_gains: np.ndarray | None = None,
+    Q_hp_hw_max: float | None = None,
+    Q_bo_hw_max: float | None = None,
     ev_capacity: float | None = None,
+    ev_soc_init: float | None = None,
     ev_target: float = 0.0,
     ev_charge_max: float | None = None,
     ev_availability: np.ndarray | None = None,
     ev_travel_energy: np.ndarray | None = None,
     eta_ev_charge: float = 0.95,
+    ev_retention: float = 1.0,
+    ev_min_final_fraction: float = 0.8,
     day_ahead: bool = False,
 ) -> dict:
     """
@@ -273,10 +192,9 @@ def optimize_full_energy_system(
     Qhp_max, Qbo_max : float
         Maximum thermal output (W) for heat pump and boiler respectively.
     hw_mode : {"hybrid_direct", "boiler_only", "hp_storage"}, default "hybrid_direct"
-        Hot water configuration. Use ``"boiler_only"`` for HHP dwellings without
-        storage (all DHW from the boiler), and ``"hp_storage"`` for mHP dwellings
-        with a storage tank as in constraints (7*), (10*), (10**). The default
-        keeps the prior direct split between heat pump and boiler.
+        Deprecated: hot water configuration is controlled by setting capacities
+        to zero (e.g. ``Q_hp_hw_max=0``) and by setting ``V_stor`` to zero when
+        storage is not used.
     V_stor : float, optional
         Storage tank volume capacity (m^3) when ``hw_mode='hp_storage'``.
         Required for the volume-based storage formulation.
@@ -288,7 +206,7 @@ def optimize_full_energy_system(
     rho_hw : float, default 1000.0
         Density of water (kg/m^3) for converting volumes to energy.
     T_hw_supply : float, default 40.0
-        Delivered hot-water temperature (°C). All draws are assumed to leave the
+        Delivered hot-water temperature (掳C). All draws are assumed to leave the
         cylinder at this temperature.
     T_stor_init : float, optional
         Legacy initial storage temperature (degC). Ignored when the cylinder is
@@ -304,10 +222,18 @@ def optimize_full_energy_system(
         omitted.
     base_electric : np.ndarray, optional
         Other electric demand (W). Defaults to zeros if omitted.
+    thermal_gains : np.ndarray, optional
+        Internal heat gains from appliances/occupants (W). Defaults to zeros if omitted.
+    Q_hp_hw_max, Q_bo_hw_max : float, optional
+        Optional caps for hot-water output from the heat pump and boiler (W).
+        Use zero to disable a source while keeping space heating enabled.
     ev_capacity : float, optional
         EV battery capacity (kWh). If ``None`` EV charging is disabled.
+    ev_soc_init : float, optional
+        Initial EV state of charge (kWh). Defaults to full battery if not set.
     ev_target : float, default 0.0
-        Minimum EV state of charge (kWh) required at the end of the horizon.
+        Minimum EV state of charge (kWh) required before the first departure
+        of each day.
     ev_charge_max : float, optional
         Maximum EV charging power (kW). Defaults to ``ev_capacity`` if not
         provided.
@@ -320,6 +246,10 @@ def optimize_full_energy_system(
         Defaults to zeros if omitted.
     eta_ev_charge : float, default 0.95
         Charging efficiency.
+    ev_retention : float, default 1.0
+        Retention factor per time step for EV state of charge (1.0 = no loss).
+    ev_min_final_fraction : float, default 0.8
+        Minimum fraction of ``ev_capacity`` required at the final timestep.
     day_ahead : bool, default False
         If True, solve one optimization per day carrying indoor temperature and
         EV state of charge to the next day.
@@ -333,15 +263,12 @@ def optimize_full_energy_system(
     """
 
     valid_hw_modes = {"hybrid_direct", "boiler_only", "hp_storage"}
-    hw_mode = hw_mode.lower()
-    if hw_mode not in valid_hw_modes:
-        raise ValueError(f"hw_mode must be one of {valid_hw_modes}")
+    if hw_mode is not None:
+        hw_mode = hw_mode.lower()
+        if hw_mode not in valid_hw_modes:
+            raise ValueError(f"hw_mode must be one of {valid_hw_modes}")
 
-    use_storage = hw_mode == "hp_storage"
-    boiler_only_hw = hw_mode == "boiler_only"
-
-    if use_storage and V_stor is None:
-        raise ValueError("V_stor must be provided when hw_mode='hp_storage'")
+    use_storage = V_stor is not None and V_stor > 0
 
     def _solve_single_schedule(
         tariff_sub,
@@ -351,6 +278,10 @@ def optimize_full_energy_system(
         tol_sub,
         T0_sub,
         soc0,
+        hw_profile_sub,
+        base_electric_profile_sub,
+        thermal_gains_profile_sub,
+        ev_availability_profile_sub,
         travel_energy_sub,
         vstor0,
     ):
@@ -360,12 +291,25 @@ def optimize_full_energy_system(
         T_low = np.where(T_set_sub >= 19.0, T_set_sub - tol_arr, 15.0)
         T_high = np.where(T_set_sub >= 19.0, T_set_sub + tol_arr, np.nan)
 
-        hw_profile = hw_demand_sub if hw_demand_sub is not None else np.zeros(T)
+        hw_profile = hw_profile_sub if hw_profile_sub is not None else np.zeros(T)
         delta_T_hw = T_hw_supply - T_mains
         hw_draw_energy = hw_profile * delta_T_hw * C_hw * rho_hw  # Joules per step
         hw_draw_power = hw_draw_energy / dt  # W equivalent if delivered directly
-        base_elec_profile = base_electric_sub if base_electric_sub is not None else np.zeros(T)
-        ev_mask = ev_availability_sub if ev_availability_sub is not None else np.ones(T)
+        base_elec_profile = (
+            base_electric_profile_sub
+            if base_electric_profile_sub is not None
+            else np.zeros(T)
+        )
+        gains_profile = (
+            thermal_gains_profile_sub
+            if thermal_gains_profile_sub is not None
+            else np.zeros(T)
+        )
+        ev_mask = (
+            ev_availability_profile_sub
+            if ev_availability_profile_sub is not None
+            else np.ones(T)
+        )
         ev_travel = (
             travel_energy_sub if travel_energy_sub is not None else np.zeros(T)
         )
@@ -375,9 +319,12 @@ def optimize_full_energy_system(
 
         # Thermal variables
         Q_hp_space = m.addVars(T, lb=0, ub=Qhp_max, name="Q_hp_space")
-        Q_bo_space = m.addVars(T, lb=0, ub=0.0 if use_storage else Qbo_max, name="Q_bo_space")
-        Q_hp_hw = m.addVars(T, lb=0, ub=Qhp_max if not boiler_only_hw else 0.0, name="Q_hp_hw")
-        Q_bo_hw = m.addVars(T, lb=0, ub=0.0 if use_storage else Qbo_max, name="Q_bo_hw")
+        hp_hw_cap = Qhp_max if Q_hp_hw_max is None else Q_hp_hw_max
+        bo_hw_cap = Qbo_max if Q_bo_hw_max is None else Q_bo_hw_max
+
+        Q_bo_space = m.addVars(T, lb=0, ub=Qbo_max, name="Q_bo_space")
+        Q_hp_hw = m.addVars(T, lb=0, ub=hp_hw_cap, name="Q_hp_hw")
+        Q_bo_hw = m.addVars(T, lb=0, ub=bo_hw_cap, name="Q_bo_hw")
         Tin = m.addVars(T, lb=-GRB.INFINITY, name="Tin")
 
         if use_storage:
@@ -386,20 +333,22 @@ def optimize_full_energy_system(
 
             m.addConstr(V_stor_var[0] == vstor0, name="Vstor_init")
             m.addConstr(T_stor[0] == T_stor_max, name="stor_fixed_0")
+            demand_energy = hw_draw_energy[0] / max(eta_hw_store, 1e-6)
             m.addConstr(
                 (T_stor_max - T_mains) * C_hw * rho_hw * (V_stor_var[0] - vstor0)
-                == Q_hp_hw[0] * dt - delta_T_hw * C_hw * rho_hw * hw_profile[0],
+                == (Q_hp_hw[0] + Q_bo_hw[0]) * dt - demand_energy,
                 name="Vstor_bal_0",
             )
             for t in range(1, T):
-                # (10*): storage volume balance with fixed 55°C tank (10**)
+                # (10*): storage volume balance with fixed 55掳C tank (10**)
+                demand_energy = hw_draw_energy[t] / max(eta_hw_store, 1e-6)
                 m.addConstr(
                     (T_stor_max - T_mains)
                     * C_hw
                     * rho_hw
                     * (V_stor_var[t] - V_stor_var[t - 1])
-                    == Q_hp_hw[t] * dt
-                    - delta_T_hw * C_hw * rho_hw * hw_profile[t],
+                    == (Q_hp_hw[t] + Q_bo_hw[t]) * dt
+                    - demand_energy,
                     name=f"Vstor_bal_{t}",
                 )
                 m.addConstr(T_stor[t] == T_stor_max, name=f"stor_fixed_{t}")
@@ -417,12 +366,13 @@ def optimize_full_energy_system(
         elec_cost = []
         gas_cost = []
         for t in range(T):
-            heat_pump_elec = (Q_hp_space[t] + Q_hp_hw[t]) / COP
-            other_elec = base_elec_profile[t]
-            ev_elec = P_ev_charge[t] if P_ev_charge is not None else 0.0
-            elec_cost.append((heat_pump_elec + other_elec + ev_elec) * tariff_sub["elec_price"].iat[t] * dt_hours)
+            heat_pump_elec_kw = (Q_hp_space[t] + Q_hp_hw[t]) / COP / 1000.0
+            other_elec_kw = base_elec_profile[t] / 1000.0
+            ev_elec_kw = P_ev_charge[t] if P_ev_charge is not None else 0.0
+            elec_cost.append((heat_pump_elec_kw + other_elec_kw + ev_elec_kw) * tariff_sub["elec_price"].iat[t] * dt_hours)
 
-            gas_cost.append(((Q_bo_space[t] + Q_bo_hw[t]) / etaB) * tariff_sub["gas_price"].iat[t] * dt_hours)
+            gas_input_kw = (Q_bo_space[t] + Q_bo_hw[t]) / etaB / 1000.0
+            gas_cost.append(gas_input_kw * tariff_sub["gas_price"].iat[t] * dt_hours)
 
         m.setObjective(gp.quicksum(elec_cost) + gp.quicksum(gas_cost), GRB.MINIMIZE)
 
@@ -436,6 +386,7 @@ def optimize_full_energy_system(
                     Q_hp_space[t - 1]
                     + Q_bo_space[t - 1]
                     + g * S_sub[t - 1]
+                    + gains_profile[t - 1]
                     - (Tin[t - 1] - Tout_sub[t - 1]) / R1
                 ),
                 name=f"temp_dyn_{t}",
@@ -464,18 +415,39 @@ def optimize_full_energy_system(
                 travel_loss = ev_travel[t]
                 if t == 0:
                     m.addConstr(
-                        ev_soc[0] == soc0 + charge_gain - travel_loss,
+                        ev_soc[0] == soc0 * ev_retention + charge_gain - travel_loss,
                         name="ev_soc0",
                     )
                 else:
                     m.addConstr(
                         ev_soc[t]
-                        == ev_soc[t - 1]
+                        == ev_soc[t - 1] * ev_retention
                         + charge_gain
                         - travel_loss,
                         name=f"ev_soc_dyn_{t}",
                     )
-            m.addConstr(ev_soc[T - 1] >= ev_target, name="ev_target_end")
+            min_final = ev_min_final_fraction * ev_capacity
+            # Per-day SOC target before first departure (ev_target and 0.8*capacity)
+            min_target = max(ev_target, min_final)
+            if tariff_sub.index is not None and len(tariff_sub.index) == T:
+                days = tariff_sub.index.normalize().unique()
+                for day in days:
+                    day_mask = (tariff_sub.index.normalize() == day)
+                    day_indices = np.where(day_mask)[0]
+                    if len(day_indices) == 0:
+                        continue
+                    # first departure = first timestep with ev_mask == 0 in that day
+                    dep_idx = None
+                    for i in day_indices:
+                        if ev_mask[i] < 0.5:
+                            dep_idx = i
+                            break
+                    if dep_idx is None:
+                        continue
+                    target_idx = dep_idx - 1 if dep_idx > 0 else dep_idx
+                    m.addConstr(ev_soc[target_idx] >= min_target, name=f"ev_target_day_{day}")
+            else:
+                m.addConstr(ev_soc[T - 1] >= min_target, name="ev_target_end")
 
         m.optimize()
         if m.Status != GRB.OPTIMAL:
@@ -522,6 +494,7 @@ def optimize_full_energy_system(
 
     hw_demand_sub = None if hw_demand is None else np.asarray(hw_demand)
     base_electric_sub = None if base_electric is None else np.asarray(base_electric)
+    thermal_gains_sub = None if thermal_gains is None else np.asarray(thermal_gains)
     ev_availability_sub = None if ev_availability is None else np.asarray(ev_availability)
     ev_travel_sub = None if ev_travel_energy is None else np.asarray(ev_travel_energy)
 
@@ -550,7 +523,10 @@ def optimize_full_energy_system(
         norm_idx = tariff.index.normalize()
         for idx, sched in enumerate(schedules):
             T_curr = T0
-            ev_soc_curr = ev_capacity if ev_capacity is not None else 0.0
+            if ev_capacity is not None:
+                ev_soc_curr = ev_capacity if ev_soc_init is None else ev_soc_init
+            else:
+                ev_soc_curr = 0.0
             vstor_curr = vstor_initial
             day_frames = []
             day_costs = []
@@ -560,13 +536,17 @@ def optimize_full_energy_system(
                     tariff.loc[mask],
                     Tout[mask],
                     S[mask],
-                np.asarray(sched)[mask],
-                tol_full[mask],
-                T_curr,
-                ev_soc_curr,
-                ev_travel_sub[mask] if ev_travel_sub is not None else None,
-                vstor_curr,
-            )
+                    np.asarray(sched)[mask],
+                    tol_full[mask],
+                    T_curr,
+                    ev_soc_curr,
+                    hw_demand_sub[mask] if hw_demand_sub is not None else None,
+                    base_electric_sub[mask] if base_electric_sub is not None else None,
+                    thermal_gains_sub[mask] if thermal_gains_sub is not None else None,
+                    ev_availability_sub[mask] if ev_availability_sub is not None else None,
+                    ev_travel_sub[mask] if ev_travel_sub is not None else None,
+                    vstor_curr,
+                )
                 day_frames.append(res)
                 day_costs.append(cost)
                 vstor_curr = res["V_stor"].iat[-1]
@@ -579,6 +559,10 @@ def optimize_full_energy_system(
                 best_key = key
     else:
         for idx, sched in enumerate(schedules):
+            if ev_capacity is not None:
+                ev_soc0 = ev_capacity if ev_soc_init is None else ev_soc_init
+            else:
+                ev_soc0 = 0.0
             res, total_cost, _, _, _ = _solve_single_schedule(
                 tariff,
                 Tout,
@@ -586,7 +570,11 @@ def optimize_full_energy_system(
                 np.asarray(sched),
                 tol,
                 T0,
-                ev_capacity if ev_capacity is not None else 0.0,
+                ev_soc0,
+                hw_demand_sub,
+                base_electric_sub,
+                thermal_gains_sub,
+                ev_availability_sub,
                 ev_travel_sub,
                 vstor_initial,
             )
