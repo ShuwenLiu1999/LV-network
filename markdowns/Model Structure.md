@@ -107,6 +107,9 @@ This document is the working map of the project structure, model responsibilitie
   - Reverted stacked plot color palette to the original defaults while keeping alignment markers visible.
   - Set stacked plot colors to EV blue, heat pump yellow, and appliance purple.
   - Reduced saturation for EV/HP/appliance stack colors and thinned the total mean line for readability.
+- `2026-02-23`:
+  - Added a pre-Experiment 4 pixel-convergence check in `FullEnergyOptimizationDemo11.ipynb` to estimate required MC runs.
+  - Added `run_penetration_pixel_convergence_from_cache` in `stochastic_baseload_multiple_building_simulation_and_aggregation.py` to return per-run peaks and running mean.
 - `2026-02-18`:
   - Replaced short project note with full repository + module catalog.
   - Added explicit per-module responsibilities, I/O expectations, and usage mapping.

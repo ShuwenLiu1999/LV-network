@@ -2035,3 +2035,121 @@ def run_hhp_mhp_ev_penetration_experiment_from_cache(
         out_path.parent.mkdir(parents=True, exist_ok=True)
         result_df.to_csv(out_path, index=False)
     return result_df
+
+
+def run_penetration_pixel_convergence_from_cache(
+    *,
+    cache_root: str | Path | None = None,
+    hybrid_cache_dir: str | Path | None = None,
+    monovalent_cache_dir: str | Path | None = None,
+    ev_penetration: float,
+    hhp_percentage: float,
+    mc_runs: int = 100,
+    random_seed: int = 42,
+    use_generated_ev_profiles: bool = False,
+    ev_gen_params: Mapping[str, Any] | None = None,
+    show_progress: bool = True,
+) -> pd.DataFrame:
+    """Run repeated MC for a single pixel and return convergence of peak demand."""
+    if hybrid_cache_dir is None or monovalent_cache_dir is None:
+        if cache_root is None:
+            raise ValueError("Provide cache_root or both hybrid_cache_dir and monovalent_cache_dir.")
+        cache_root = Path(cache_root)
+        hybrid_cache_dir = cache_root / "hybrid"
+        monovalent_cache_dir = cache_root / "monovalent"
+
+    hybrid_cache = _load_case_breakdown_cache(Path(hybrid_cache_dir))
+    monovalent_cache = _load_case_breakdown_cache(Path(monovalent_cache_dir))
+
+    hybrid_ids = set(hybrid_cache["base_by_dwelling"].keys())
+    monovalent_ids = set(monovalent_cache["base_by_dwelling"].keys())
+    common_ids = sorted(hybrid_ids & monovalent_ids, key=_dwelling_sort_key)
+    if not common_ids:
+        raise ValueError("No common dwelling IDs between hybrid and monovalent cache folders.")
+
+    n_runs_h = int(hybrid_cache["n_runs"])
+    n_runs_m = int(monovalent_cache["n_runs"])
+    n_steps_h = int(hybrid_cache["n_steps"])
+    n_steps_m = int(monovalent_cache["n_steps"])
+    if n_steps_h != n_steps_m:
+        raise ValueError(f"Step count mismatch: hybrid={n_steps_h}, monovalent={n_steps_m}")
+
+    hybrid_base = np.stack([hybrid_cache["base_by_dwelling"][d] for d in common_ids], axis=0)
+    hybrid_ev = np.stack([hybrid_cache["ev_by_dwelling"][d] for d in common_ids], axis=0)
+    monovalent_base = np.stack([monovalent_cache["base_by_dwelling"][d] for d in common_ids], axis=0)
+    monovalent_ev = np.stack([monovalent_cache["ev_by_dwelling"][d] for d in common_ids], axis=0)
+
+    n_dwellings = len(common_ids)
+    n_steps = n_steps_h
+    ev_frac = _normalize_penetration_values([ev_penetration])[0]
+    hhp_frac = _normalize_penetration_values([hhp_percentage])[0]
+    mc_runs = int(mc_runs)
+    if mc_runs <= 0:
+        raise ValueError("mc_runs must be > 0")
+
+    rng = np.random.default_rng(int(random_seed))
+    ev_pool = None
+    if use_generated_ev_profiles:
+        cfg = dict(ev_gen_params or {})
+        pool_size = int(cfg.pop("ev_profile_pool_size", 2000))
+        if pool_size <= 0:
+            raise ValueError("ev_profile_pool_size must be > 0")
+        ev_pool = _generate_homogeneous_ev_profile_pool(
+            n_profiles=pool_size,
+            n_steps=n_steps,
+            rng=rng,
+            params=cfg,
+        )
+
+    n_hhp = int(round(hhp_frac * n_dwellings))
+    n_ev = int(round(ev_frac * n_dwellings))
+    n_hhp = min(max(n_hhp, 0), n_dwellings)
+    n_ev = min(max(n_ev, 0), n_dwellings)
+
+    peaks = np.zeros(mc_runs, dtype=np.float32)
+    run_iter = range(mc_runs)
+    if show_progress:
+        run_iter = tqdm(run_iter, desc="Pixel MC runs", dynamic_ncols=True)
+
+    for i in run_iter:
+        hhp_idx = rng.choice(n_dwellings, size=n_hhp, replace=False) if n_hhp > 0 else np.array([], dtype=int)
+        mhp_idx = np.setdiff1d(np.arange(n_dwellings, dtype=int), hhp_idx, assume_unique=True)
+
+        ev_idx = rng.choice(n_dwellings, size=n_ev, replace=False) if n_ev > 0 else np.array([], dtype=int)
+        ev_mask = np.zeros(n_dwellings, dtype=bool)
+        ev_mask[ev_idx] = True
+
+        agg = np.zeros(n_steps, dtype=np.float32)
+        if hhp_idx.size:
+            run_idx_h = rng.integers(0, n_runs_h, size=hhp_idx.size)
+            agg += hybrid_base[hhp_idx, run_idx_h, :].sum(axis=0)
+            if not use_generated_ev_profiles:
+                hhp_ev_mask = ev_mask[hhp_idx]
+                if np.any(hhp_ev_mask):
+                    agg += hybrid_ev[hhp_idx[hhp_ev_mask], run_idx_h[hhp_ev_mask], :].sum(axis=0)
+
+        if mhp_idx.size:
+            run_idx_m = rng.integers(0, n_runs_m, size=mhp_idx.size)
+            agg += monovalent_base[mhp_idx, run_idx_m, :].sum(axis=0)
+            if not use_generated_ev_profiles:
+                mhp_ev_mask = ev_mask[mhp_idx]
+                if np.any(mhp_ev_mask):
+                    agg += monovalent_ev[mhp_idx[mhp_ev_mask], run_idx_m[mhp_ev_mask], :].sum(axis=0)
+
+        if use_generated_ev_profiles and n_ev > 0:
+            if ev_pool is None:
+                raise RuntimeError("EV profile pool was not initialized.")
+            ev_pick = rng.integers(0, ev_pool.shape[0], size=n_ev)
+            agg += ev_pool[ev_pick, :].sum(axis=0)
+
+        peaks[i] = float(agg.max())
+
+    running_mean = np.cumsum(peaks) / np.arange(1, mc_runs + 1)
+    df = pd.DataFrame(
+        {
+            "run": np.arange(1, mc_runs + 1, dtype=int),
+            "peak_kw": peaks.astype(float),
+            "running_mean_kw": running_mean.astype(float),
+        }
+    )
+    return df
