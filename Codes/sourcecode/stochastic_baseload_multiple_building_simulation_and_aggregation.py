@@ -621,6 +621,52 @@ def _resolve_dwellings_to_run(
     return out
 
 
+def _expand_daily_offsets_to_steps(
+    daily_offsets_steps: np.ndarray,
+    n_steps: int,
+    steps_per_day: int,
+) -> np.ndarray:
+    """Expand one offset value per day to one value per timestep."""
+    out = np.zeros(int(n_steps), dtype=int)
+    for day_idx, offset in enumerate(np.asarray(daily_offsets_steps, dtype=int)):
+        start = int(day_idx * steps_per_day)
+        end = int(min(start + steps_per_day, n_steps))
+        if start >= end:
+            continue
+        out[start:end] = int(offset)
+    return out
+
+
+def _apply_random_daily_tariff_offsets(
+    base_tariff: pd.DataFrame,
+    *,
+    steps_per_day: int,
+    rng: np.random.Generator,
+    max_offset_steps: int,
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Randomly shift each day's tariff profile by an integer number of steps."""
+    max_offset_steps = int(abs(max_offset_steps))
+    if max_offset_steps == 0:
+        return base_tariff.copy(), np.zeros(int(np.ceil(len(base_tariff) / steps_per_day)), dtype=int)
+
+    values = base_tariff[["elec_price", "gas_price"]].to_numpy(copy=True)
+    n_steps = len(values)
+    n_days = int(np.ceil(n_steps / float(steps_per_day)))
+    offsets = np.zeros(n_days, dtype=int)
+
+    for day_idx in range(n_days):
+        start = int(day_idx * steps_per_day)
+        end = int(min(start + steps_per_day, n_steps))
+        if end <= start:
+            continue
+        offset = int(rng.integers(-max_offset_steps, max_offset_steps + 1))
+        offsets[day_idx] = offset
+        values[start:end, :] = np.roll(values[start:end, :], shift=offset, axis=0)
+
+    shifted = pd.DataFrame(values, index=base_tariff.index, columns=["elec_price", "gas_price"])
+    return shifted, offsets
+
+
 def run_monte_carlo_batch(
     context: Mapping[str, Any],
     *,
@@ -633,6 +679,7 @@ def run_monte_carlo_batch(
     optim_params_cfg: Mapping[str, Any] | None = None,
     ev_params_cfg: Mapping[str, Any] | None = None,
     hw_params_cfg: Mapping[str, Any] | None = None,
+    tariff_random_offset_cfg: Mapping[str, Any] | None = None,
     single_dwelling_id: Any | None = None,
     single_dwelling_output_path: str | Path | None = None,
     day_ahead: bool = True,
@@ -661,6 +708,7 @@ def run_monte_carlo_batch(
     optim_params_cfg = dict(optim_params_cfg or {})
     ev_params_cfg = dict(ev_params_cfg or {})
     hw_params_cfg = dict(hw_params_cfg or {})
+    tariff_random_offset_cfg = dict(tariff_random_offset_cfg or {})
 
     case = str(case).lower().strip()
     capacity_candidates = np.asarray(capacity_candidates_kw if capacity_candidates_kw is not None else np.arange(7.0, 10.5, 0.5), dtype=float)
@@ -769,6 +817,27 @@ def run_monte_carlo_batch(
             # ev_seed is a convenience config key and should not be passed to the optimizer.
             ev_params.pop("ev_seed", None)
 
+            tariff_for_opt = tariff
+            daily_offset_steps = np.zeros(int(np.ceil(n_steps / float(steps_per_day))), dtype=int)
+            use_random_offsets = bool(tariff_random_offset_cfg.get("enabled", False))
+            if use_random_offsets:
+                if "max_offset_steps" in tariff_random_offset_cfg:
+                    max_offset_steps = int(abs(tariff_random_offset_cfg.get("max_offset_steps", 0)))
+                else:
+                    max_offset_hours = float(tariff_random_offset_cfg.get("max_offset_hours", 0.0))
+                    max_offset_steps = int(round(max_offset_hours * steps_per_day / 24.0))
+                max_offset_steps = min(max_offset_steps, max(steps_per_day - 1, 0))
+                offset_seed_base = int(tariff_random_offset_cfg.get("seed_base", 7_000_000))
+                tariff_rng_seed = offset_seed_base + (10_000 * run) + _stable_dwelling_seed(dwelling_id)
+                tariff_rng = np.random.default_rng(tariff_rng_seed)
+                tariff_for_opt, daily_offset_steps = _apply_random_daily_tariff_offsets(
+                    tariff,
+                    steps_per_day=steps_per_day,
+                    rng=tariff_rng,
+                    max_offset_steps=max_offset_steps,
+                )
+            offset_steps_per_timestep = _expand_daily_offsets_to_steps(daily_offset_steps, n_steps, steps_per_day)
+
             if case == "hybrid":
                 cap_candidates, qbo_max_kw = np.array([4.0]), 30.0
                 hw_params = {"hw_mode": "boiler_only", "V_stor": 0.0, "V_stor_init": 0.0, "T_mains": 10.0, "T_hw_supply": 40.0, "Q_hp_hw_max": 0.0}
@@ -816,7 +885,7 @@ def run_monte_carlo_batch(
 
                 try:
                     results = optimize_full_energy_system(
-                        tariff=tariff,
+                        tariff=tariff_for_opt,
                         Tout=Tout,
                         S=S,
                         setpoint_sequences=setpoint_sequences,
@@ -843,7 +912,7 @@ def run_monte_carlo_batch(
                 if is_single:
                     single_detail = {
                         "best": best,
-                        "tariff": tariff,
+                        "tariff": tariff_for_opt,
                         "params": params,
                         "ev_params": ev_params,
                         "hw_params": hw_params,
@@ -883,6 +952,9 @@ def run_monte_carlo_batch(
                                 "boiler_gas_kw": np.asarray(gas_input, dtype=float),
                                 "ev_charge_kw": np.asarray(ev_elec, dtype=float),
                                 "appliance_kw": np.asarray(other_elec, dtype=float),
+                                "tariff_elec_price": np.asarray(tariff_for_opt["elec_price"], dtype=float),
+                                "tariff_gas_price": np.asarray(tariff_for_opt["gas_price"], dtype=float),
+                                "tariff_offset_steps": np.asarray(offset_steps_per_timestep, dtype=int),
                                 "solve_status": "optimal",
                             }
                         )
@@ -913,6 +985,9 @@ def run_monte_carlo_batch(
                                 "boiler_gas_kw": np.zeros(n_steps, dtype=float),
                                 "ev_charge_kw": np.zeros(n_steps, dtype=float),
                                 "appliance_kw": np.asarray(other_elec, dtype=float),
+                                "tariff_elec_price": np.asarray(tariff_for_opt["elec_price"], dtype=float),
+                                "tariff_gas_price": np.asarray(tariff_for_opt["gas_price"], dtype=float),
+                                "tariff_offset_steps": np.asarray(offset_steps_per_timestep, dtype=int),
                                 "solve_status": "infeasible",
                             }
                         )
@@ -956,6 +1031,7 @@ def run_monte_carlo_batch(
         "output_dir": output_dir,
         "setpoint_sequences": setpoint_sequences,
         "failure_reasons": dict(failure_counter),
+        "tariff_random_offset_cfg": tariff_random_offset_cfg,
     }
 
 def plot_profile_usage_table(profile_usage: Sequence[Mapping[str, Any]], dwelling_id: Any | None = None) -> pd.DataFrame:

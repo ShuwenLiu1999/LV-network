@@ -28,7 +28,7 @@ This document is the working map of the project structure, model responsibilitie
 | Module | What it does | Main inputs | Main outputs | Used by |
 |---|---|---|---|---|
 | `Codes/sourcecode/RC_Optimization.py` | Solves thermal-energy dispatch optimization with Gurobi. Supports hybrid/monovalent heating logic, hot-water modes, EV charging constraints, and day-ahead/full-horizon solve. Builds tariffs too. | Building RC params (`R1,C1,g`), tariff, weather (`Tout,S`), comfort setpoints/tolerance, device capacities, EV and HW settings | Per-step optimal schedules (`Q_hp_space`, `Q_bo_space`, `Q_hp_hw`, `Q_bo_hw`, `P_ev_charge`, temperatures, storage states) and objective costs | `FullEnergyOptimizationDemo11.ipynb`, `stochastic_baseload_multiple_building_simulation_and_aggregation.py`, demand generation scripts |
-| `Codes/sourcecode/stochastic_baseload_multiple_building_simulation_and_aggregation.py` | Orchestrates end-to-end stochastic simulation workflow for many dwellings. Handles profile sampling by occupancy, EV travel synthesis, Monte Carlo runs, run aggregation, summary plots, EV-power sweep experiments, per-dwelling breakdown export, and cache-based EV-penetration x HHP-share experiments. Supports optional on-the-fly homogeneous EV profile generation to replace cached EV components in penetration studies, and explicit per-pixel tqdm progress updates. | Metadata CSV, weather CSV, stochastic demand profiles, configuration dictionaries (`optim_params_cfg`, `ev_params_cfg`, `hw_params_cfg`), cached single-dwelling breakdown folders (`hybrid`/`monovalent`), optional EV-generation parameter dictionary | Monte Carlo result dicts, run CSVs (optional), aggregated curves, summary tables, per-dwelling breakdown CSV, penetration-grid maximum-demand summary table, contour-plot-ready surface table | `Codes/FullEnergyOptimizationDemo11.ipynb` |
+| `Codes/sourcecode/stochastic_baseload_multiple_building_simulation_and_aggregation.py` | Orchestrates end-to-end stochastic simulation workflow for many dwellings. Handles profile sampling by occupancy, EV travel synthesis, Monte Carlo runs, run aggregation, summary plots, EV-power sweep experiments, per-dwelling breakdown export, and cache-based EV-penetration x HHP-share experiments. Supports optional on-the-fly homogeneous EV profile generation to replace cached EV components in penetration studies, explicit per-pixel tqdm progress updates, and randomized-tariff-offset MC workflows (including offset-range scans across `hybrid`/`monovalent` cases). | Metadata CSV, weather CSV, stochastic demand profiles, configuration dictionaries (`optim_params_cfg`, `ev_params_cfg`, `hw_params_cfg`), cached single-dwelling breakdown folders (`hybrid`/`monovalent`), optional EV-generation parameter dictionary | Monte Carlo result dicts, run CSVs (optional), aggregated curves, summary tables, per-dwelling breakdown CSV, penetration-grid maximum-demand summary table, contour-plot-ready surface table | `Codes/FullEnergyOptimizationDemo11.ipynb` |
 
 ### Network simulation and aggregation
 
@@ -51,7 +51,7 @@ This document is the working map of the project structure, model responsibilitie
 
 | Notebook | Role |
 |---|---|
-| `Codes/FullEnergyOptimizationDemo11.ipynb` | Primary experiment notebook: workflow setup, MC runs, MHP/HHP sweeps, single/all-dwelling breakdown runs, convergence analytics, and cache-based EV-penetration x HHP-share maximum-demand sweep. |
+| `Codes/FullEnergyOptimizationDemo11.ipynb` | Primary experiment notebook: workflow setup, MC runs, MHP/HHP sweeps, single/all-dwelling breakdown runs, convergence analytics, cache-based EV-penetration x HHP-share maximum-demand sweep, and randomized cosy-tariff offset scans across both heating cases. |
 | `Codes/Generate_Occupancy_based_demand_with_CREST_model.ipynb` | Demand profile generation and occupancy-linked preprocessing. |
 | `Codes/Data Preprocessing.ipynb` | Data cleaning/transformation utilities. |
 | `Codes/Main.ipynb`, `Codes/Test.ipynb`, `Codes/IEA_Con_Result_Analysis.ipynb` | Scenario assembly, experimentation, and result analysis utilities. |
@@ -77,17 +77,27 @@ This document is the working map of the project structure, model responsibilitie
 4. Avoid deep inspection of large data files unless explicitly requested.
 5. Keep notebook-safe outputs (clear cell-friendly formatting).
 6. Check/report time around code edits for traceability.
-7. Ask concise clarifying questions when requirements are ambiguous.
+7. Ask concise clarifying questions when requirements are ambiguous or can be interpreted in multiple ways.
+8. When possible, provide multiple implementation options before making changes.
+9. When multiple options are presented, wait for the user to choose before implementing.
 
 ### B) Structural change documentation rule
 
 - Every code-structure change must be reflected in this file in the same working session.
+- Always track changes in two places when applicable:
+  - update the change log in Section 6.
+  - update impacted structure sections in place (module catalog, notebook role map, output contracts, or protocol sections).
 - Structural changes include:
   - new modules
   - removed modules
   - renamed modules
   - major responsibility shifts between modules
   - new standard workflow outputs.
+
+### C) Code commenting standard
+
+- Add straightforward and concise comments for key variables/functions and the purpose of each code block.
+- Keep comments practical and minimal: explain intent and usage, not obvious syntax.
 
 ## 6) Structure change log
 
@@ -110,6 +120,21 @@ This document is the working map of the project structure, model responsibilitie
 - `2026-02-23`:
   - Added a pre-Experiment 4 pixel-convergence check in `FullEnergyOptimizationDemo11.ipynb` to estimate required MC runs.
   - Added `run_penetration_pixel_convergence_from_cache` in `stochastic_baseload_multiple_building_simulation_and_aggregation.py` to return per-run peaks and running mean.
+- `2026-03-23`:
+  - Added `Experiment 3a` in `FullEnergyOptimizationDemo11.ipynb` to aggregate Experiment 3 per-dwelling breakdown outputs by case and plot stacked demand curves with component breakdown.
+  - Updated `Experiment 3a` case-path selection to auto-load all folders under `Output Data/Single Dwelling Runs/randomized offset`, while keeping the old manual case-path list commented in the notebook cell for reference.
+  - Added randomized per-dwelling, per-day tariff-offset support to `run_monte_carlo_batch` in `stochastic_baseload_multiple_building_simulation_and_aggregation.py` via `tariff_random_offset_cfg`.
+  - Added `Experiment 6` in `FullEnergyOptimizationDemo11.ipynb` for cosy-tariff Monte Carlo with randomized daily switching-point offsets and outputs saved under `Output Data/Single Dwelling Runs/randomized offset`.
+  - Updated `Experiment 6` in `FullEnergyOptimizationDemo11.ipynb` to sweep offset maxima (`exp6_offset_max_hours_list`) with the same `mc_runs` across both `hybrid` and `monovalent` cases, using a single visible tqdm progress bar over all dwelling jobs.
+  - Applied full-notebook comment standardization in `FullEnergyOptimizationDemo11.ipynb` with concise intent-focused comments for key variables, helper functions, and code blocks.
+  - Updated `Experiment 3a` to add a shared original cosy-tariff subplot and synchronized dotted switch-point alignment lines across all subplots.
+  - Integrated updated workflow governance rules:
+    - always re-check this file on each prompt.
+    - provide multiple options before implementation when possible.
+    - wait for user selection when multiple options are presented.
+    - ask clarification questions on ambiguous instructions.
+    - apply concise, intent-focused code comments.
+    - enforce dual change tracking (change log + in-place structure updates).
 - `2026-02-18`:
   - Replaced short project note with full repository + module catalog.
   - Added explicit per-module responsibilities, I/O expectations, and usage mapping.
