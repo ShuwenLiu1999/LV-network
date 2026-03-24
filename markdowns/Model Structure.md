@@ -51,7 +51,7 @@ This document is the working map of the project structure, model responsibilitie
 
 | Notebook | Role |
 |---|---|
-| `Codes/FullEnergyOptimizationDemo11.ipynb` | Primary experiment notebook: workflow setup, MC runs, MHP/HHP sweeps, single/all-dwelling breakdown runs, convergence analytics, cache-based EV-penetration x HHP-share maximum-demand sweep, and randomized cosy-tariff offset scans across both heating cases. |
+| `Codes/FullEnergyOptimizationDemo11.ipynb` | Primary experiment notebook: workflow setup, MC runs, MHP/HHP sweeps, single/all-dwelling breakdown runs, convergence analytics, cache-based EV-penetration x HHP-share maximum-demand sweep, randomized cosy-tariff offset scans across both heating cases, and post-scan electricity-cost summarization from randomized-offset breakdown outputs. |
 | `Codes/Generate_Occupancy_based_demand_with_CREST_model.ipynb` | Demand profile generation and occupancy-linked preprocessing. |
 | `Codes/Data Preprocessing.ipynb` | Data cleaning/transformation utilities. |
 | `Codes/Main.ipynb`, `Codes/Test.ipynb`, `Codes/IEA_Con_Result_Analysis.ipynb` | Scenario assembly, experimentation, and result analysis utilities. |
@@ -66,6 +66,7 @@ This document is the working map of the project structure, model responsibilitie
 - Optional aggregate stacked consumption plot: `Output Data/<subdir>/plots/exp5_cache_stackplots/<case>/aggregate_stacked_consumption.png`
 - Penetration sweep summary table: `Output Data/<subdir>/ev_hhp_penetration_max_demand.csv`
 - Penetration contour plot: `Output Data/<subdir>/ev_hhp_penetration_contour_max_demand.png`
+- Experiment 6a electricity-cost summary: `Output Data/Single Dwelling Runs/randomized offset/exp6a_electricity_cost_summary.csv`
 
 ## 5) Prompt handling protocol (must follow)
 
@@ -135,6 +136,16 @@ This document is the working map of the project structure, model responsibilitie
     - ask clarification questions on ambiguous instructions.
     - apply concise, intent-focused code comments.
     - enforce dual change tracking (change log + in-place structure updates).
+- `2026-03-24`:
+  - Added `Experiment 6a` in `FullEnergyOptimizationDemo11.ipynb` to compute total electricity cost (using cosy electricity tariff as wholesale price) for each randomized-offset case folder (`case + offset`) from Experiment 6 outputs, using all runs.
+  - Added CSV export for Experiment 6a summary at `Output Data/Single Dwelling Runs/randomized offset/exp6a_electricity_cost_summary.csv`.
+  - Simplified `Experiment 6a` method: for each `case + offset`, first compute the mean aggregated electricity-demand curve (aggregate across dwellings per run, then average across runs), then compute total electricity cost using the original un-offset cosy tariff.
+  - Extended `Experiment 6a` summary columns to include `total_gas_cost_gbp_unoffset_tariff` and `total_energy_cost_gbp_unoffset_tariff` (electricity + gas), using the same mean aggregated curves and original un-offset cosy tariff prices.
+  - Added `peak_extreme_demand_kw` and `peak_mean_demand_kw` to the Experiment 6a summary table per `case + offset`.
+  - Added two Experiment 6a line plots comparing both cases across offset values:
+    - peak extreme demand vs total energy cost
+    - peak mean demand vs total energy cost
+  - Updated Experiment 6a plot axes so `x = peak demand` and `y = total energy cost` for both peak-extreme and peak-mean comparison charts.
 - `2026-02-18`:
   - Replaced short project note with full repository + module catalog.
   - Added explicit per-module responsibilities, I/O expectations, and usage mapping.
