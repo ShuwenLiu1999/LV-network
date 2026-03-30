@@ -266,8 +266,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--tariff-type",
-        choices={"cosy", "flat"},
-        default="cosy",
+        choices={"cozy", "flat"},
+        default="cozy",
         help="Shape of the electricity tariff profile.",
     )
 

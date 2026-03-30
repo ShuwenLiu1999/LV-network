@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+from pathlib import Path
 
 
 def optimize_hhp_operation(
@@ -593,15 +594,68 @@ def optimize_full_energy_system(
 
 
 # Function to generate a daily tariff DataFrame with electricity and gas prices
-def build_tariff(start_date,n_days,step="30min",type:str="cosy"):
-    if type == "flat":
-        return flat_tariff(start_date,n_days=n_days,step=step)
-    elif type == "cosy":
+def build_tariff(start_date,n_days,step="30min",type:str="cozy"):
+    tariff_type = str(type).strip().lower()
+
+    if tariff_type == "flat":
+        return flat_tariff(start_date, n_days=n_days, step=step)
+    if tariff_type == "cozy":
         tariff_list = []
         for i in range(n_days):
             day = start_date + pd.Timedelta(days=i)
             tariff_list.append(daily_tariff(day, step))
         return pd.concat(tariff_list)
+    if tariff_type == "agile":
+        return agile_tariff(start_date, n_days=n_days, step=step, gas_price=6.0)
+
+    raise ValueError("Unsupported tariff type. Use one of: 'flat', 'cozy', 'agile'.")
+
+
+def agile_tariff(
+    start_date,
+    n_days,
+    step="30min",
+    gas_price: float = 6.0,
+    csv_filename: str = "csv_agile_F_North_Eastern_England.csv",
+):
+    """Build tariff from Octopus Agile CSV and set constant gas price."""
+    repo_root = Path(__file__).resolve().parents[2]
+    agile_path = repo_root / "Input data" / csv_filename
+    if not agile_path.exists():
+        raise FileNotFoundError(f"Agile tariff file not found: {agile_path}")
+
+    # Source file has no header. Keep timestamp and electricity price columns only.
+    agile = pd.read_csv(
+        agile_path,
+        header=None,
+        usecols=[0, 4],
+        names=["timestamp", "elec_price"],
+    )
+    agile["timestamp"] = pd.to_datetime(agile["timestamp"], utc=True, errors="coerce")
+    agile = agile.dropna(subset=["timestamp"])
+    # Use UTC-naive timestamps so indexing matches the rest of this project.
+    agile["timestamp"] = agile["timestamp"].dt.tz_convert(None)
+    agile = agile.drop_duplicates(subset=["timestamp"]).set_index("timestamp").sort_index()
+
+    start_ts = pd.Timestamp(start_date)
+    if start_ts.tzinfo is not None:
+        start_ts = start_ts.tz_convert(None)
+    end_ts = start_ts + pd.Timedelta(days=int(n_days)) - pd.Timedelta(step)
+    target_index = pd.date_range(start_ts, end_ts, freq=step)
+
+    elec_price = agile["elec_price"].reindex(target_index)
+    if elec_price.isna().any():
+        missing_count = int(elec_price.isna().sum())
+        raise ValueError(
+            "Agile tariff data does not fully cover requested period "
+            f"{target_index[0]} to {target_index[-1]} (missing {missing_count} timestamps)."
+        )
+
+    gas = pd.Series(float(gas_price), index=target_index)
+    return pd.DataFrame(
+        {"elec_price": elec_price.to_numpy(dtype=float), "gas_price": gas.to_numpy(dtype=float)},
+        index=target_index,
+    )
 
 def daily_tariff(day, step="30min"):
     times = pd.date_range(day, day + pd.Timedelta("1D") - pd.Timedelta(step), freq=step)
@@ -609,14 +663,14 @@ def daily_tariff(day, step="30min"):
     elec = pd.Series(15.0, index=times) # default electricity price 15.0
     gas  = pd.Series(5.0, index=times) # default gas price 5.0
 
-    cosy_periods = [
+    cozy_periods = [
         (day + pd.Timedelta("04:00:00"), day + pd.Timedelta("07:00:00")),
         (day + pd.Timedelta("13:00:00"), day + pd.Timedelta("16:00:00")),
         (day + pd.Timedelta("22:00:00"), day + pd.Timedelta("24:00:00")),
     ]
     high_periods = [(day + pd.Timedelta("16:00:00"), day + pd.Timedelta("19:00:00"))]
 
-    for start, end in cosy_periods:
+    for start, end in cozy_periods:
         elec[start:end] = 5.0
     for start, end in high_periods:
         elec[start:end] = 30.0

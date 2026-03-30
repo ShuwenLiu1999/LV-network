@@ -161,7 +161,7 @@ def prepare_workflow_inputs(
     step: str = "30min",
     start_date: pd.Timestamp | str | None = None,
     n_days: int = 7,
-    tariff_type: str = "cosy",
+    tariff_type: str = "cozy",
     max_dwellings: int | None = None,
     random_seed: int = 42,
     meta_columns: Mapping[str, str] | None = None,
@@ -955,6 +955,13 @@ def run_monte_carlo_batch(
                                 "tariff_elec_price": np.asarray(tariff_for_opt["elec_price"], dtype=float),
                                 "tariff_gas_price": np.asarray(tariff_for_opt["gas_price"], dtype=float),
                                 "tariff_offset_steps": np.asarray(offset_steps_per_timestep, dtype=int),
+                                "Tin_C": np.asarray(best["Tin"], dtype=float),
+                                "T_tank_C": np.asarray(best["T_tank"], dtype=float) if "T_tank" in best.columns else np.full(n_steps, np.nan),
+                                "Q_hp_space_w": np.asarray(best["Q_hp_space"], dtype=float),
+                                "Q_bo_space_w": np.asarray(best["Q_bo_space"], dtype=float),
+                                "Q_hp_hw_w": np.asarray(best["Q_hp_hw"], dtype=float),
+                                "Q_bo_hw_w": np.asarray(best["Q_bo_hw"], dtype=float),
+                                "ev_soc_kwh": np.asarray(best["ev_soc"], dtype=float) if "ev_soc" in best.columns else np.full(n_steps, np.nan),
                                 "solve_status": "optimal",
                             }
                         )
@@ -988,6 +995,13 @@ def run_monte_carlo_batch(
                                 "tariff_elec_price": np.asarray(tariff_for_opt["elec_price"], dtype=float),
                                 "tariff_gas_price": np.asarray(tariff_for_opt["gas_price"], dtype=float),
                                 "tariff_offset_steps": np.asarray(offset_steps_per_timestep, dtype=int),
+                                "Tin_C": np.full(n_steps, np.nan),
+                                "T_tank_C": np.full(n_steps, np.nan),
+                                "Q_hp_space_w": np.full(n_steps, np.nan),
+                                "Q_bo_space_w": np.full(n_steps, np.nan),
+                                "Q_hp_hw_w": np.full(n_steps, np.nan),
+                                "Q_bo_hw_w": np.full(n_steps, np.nan),
+                                "ev_soc_kwh": np.full(n_steps, np.nan),
                                 "solve_status": "infeasible",
                             }
                         )
@@ -1346,8 +1360,6 @@ def _infer_step_str(time_index: pd.DatetimeIndex) -> str:
 def _build_tariff_for_time_index(time_index: pd.DatetimeIndex, tariff_type: str) -> pd.DataFrame:
     """Build a tariff DataFrame aligned to the provided time index."""
     tariff_norm = str(tariff_type).strip().lower()
-    if tariff_norm == "cozy":
-        tariff_norm = "cosy"
     if len(time_index) < 2:
         raise ValueError("Time index must have at least two points to build a tariff.")
     delta = time_index[1] - time_index[0]
