@@ -67,7 +67,7 @@ This document is the working map of the project structure, model responsibilitie
 - Optional aggregate stacked consumption plot: `Output Data/<subdir>/plots/exp5_cache_stackplots/<case>/aggregate_stacked_consumption.png`
 - Penetration sweep summary table: `Output Data/<subdir>/ev_hhp_penetration_max_demand.csv`
 - Penetration contour plot: `Output Data/<subdir>/ev_hhp_penetration_contour_max_demand.png`
-- Experiment 6a electricity/gas/energy-cost summary: `Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv`
+- Experiment 6a electricity/gas/energy-cost summary: `Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv` (includes infeasible-handling counters when infeasible run curves are replaced by feasible-run mean dwelling curves)
 - Diagnosis A/B per-pair summary: `Output Data/Single Dwelling Runs/randomized offset/<case>/diagnosis_ab_test_summary.csv` (includes `*_hp_capacity_kw` columns for replayed scenarios)
 - Diagnosis capacity-relaxation status summary: `Output Data/Single Dwelling Runs/randomized offset/<case>/diagnosis_capacity_relaxation_summary.csv`
 
@@ -113,6 +113,11 @@ This document is the working map of the project structure, model responsibilitie
 - `2026-03-30`:
   - Added protocol rule: never execute experiment/data-update tasks directly; always provide runnable code for user-side execution.
   - Added protocol rule reinforcement: always re-open `markdowns/main.md` at the start of every new task before any actions.
+  - Updated `Experiment 6a` in `Codes/FullEnergyOptimizationDemo11.ipynb` infeasible handling:
+    - excludes infeasible run curves from direct aggregation,
+    - replaces each dwelling infeasible run with the dwelling's feasible-run mean load curve,
+    - falls back to case-level feasible mean curve (then dwelling all-runs mean if no feasible data exists),
+    - adds infeasible replacement counters to `exp6a_energy_cost_summary.csv`.
 - `2026-03-27`:
   - Renamed `markdowns/Model Structure.md` to `markdowns/main.md`.
   - Added `markdowns/key assumptions.md` containing reviewed model assumptions and experiment summaries.
