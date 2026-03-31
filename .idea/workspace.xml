@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b41a7513-aa89-448a-a122-020d422dc7bd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Codes/FullEnergyOptimizationDemo11.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/Codes/FullEnergyOptimizationDemo11.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv" beforeDir="false" afterPath="$PROJECT_DIR$/Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv" afterDir="false" />
-    </list>
+    <list default="true" id="b41a7513-aa89-448a-a122-020d422dc7bd" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -277,7 +273,7 @@
       <workItem from="1774625107935" duration="181000" />
       <workItem from="1774625302606" duration="415000" />
       <workItem from="1774625743271" duration="226000" />
-      <workItem from="1774625981704" duration="21624000" />
+      <workItem from="1774625981704" duration="22070000" />
     </task>
     <servers />
   </component>
