@@ -51,7 +51,7 @@ This document is the working map of the project structure, model responsibilitie
 
 | Notebook | Role |
 |---|---|
-| `Codes/FullEnergyOptimizationDemo11.ipynb` | Primary experiment notebook: workflow setup, MC runs, MHP/HHP sweeps, single/all-dwelling breakdown runs, convergence analytics, cache-based EV-penetration x HHP-share maximum-demand sweep, randomized cozy-tariff offset scans across both heating cases, and post-scan electricity-cost summarization from randomized-offset breakdown outputs. |
+| `Codes/FullEnergyOptimizationDemo11.ipynb` | Primary experiment notebook: workflow setup, MC runs, MHP/HHP sweeps, single/all-dwelling breakdown runs, convergence analytics, cache-based EV-penetration x HHP-share maximum-demand sweep, randomized cozy-tariff offset scans across both heating cases, and post-scan energy-cost component summarization from randomized-offset breakdown outputs (HP/EV/baseload electricity + gas) with case-wise component-cost vs peak-demand plots. |
 | `Codes/Diagnose_HHP_Infeasibility.ipynb` | Replays infeasible cached Experiment 6 `(dwelling, run)` cases and applies A/B relaxation tests (EV targets vs thermal constraints), plus capacity-limit relaxations (EV charge-cap lift and monovalent HP-cap lift), to classify likely infeasibility drivers and export diagnosis summaries including selected feasible HP capacities. |
 | `Codes/Generate_Occupancy_based_demand_with_CREST_model.ipynb` | Demand profile generation and occupancy-linked preprocessing. |
 | `Codes/Data Preprocessing.ipynb` | Data cleaning/transformation utilities. |
@@ -67,7 +67,7 @@ This document is the working map of the project structure, model responsibilitie
 - Optional aggregate stacked consumption plot: `Output Data/<subdir>/plots/exp5_cache_stackplots/<case>/aggregate_stacked_consumption.png`
 - Penetration sweep summary table: `Output Data/<subdir>/ev_hhp_penetration_max_demand.csv`
 - Penetration contour plot: `Output Data/<subdir>/ev_hhp_penetration_contour_max_demand.png`
-- Experiment 6a electricity/gas/energy-cost summary: `Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv` (includes infeasible-handling counters when infeasible run curves are replaced by feasible-run mean dwelling curves)
+- Experiment 6a electricity/gas/energy-cost summary: `Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv` (includes infeasible-handling counters when infeasible run curves are replaced by feasible-run mean dwelling curves; includes component breakdown columns for HP electricity, EV electricity, baseload electricity, and gas costs/energy)
 - Experiment 6 per-folder monovalent HP-capacity summary: `Output Data/Single Dwelling Runs/randomized offset/<tariff>_monovalent_EV_<kW>kW_offset<X>h/dwelling_monovalent_hp_capacity_summary.csv` (one row per dwelling with max selected HP capacity across MC runs)
 - Diagnosis A/B per-pair summary: `Output Data/Single Dwelling Runs/randomized offset/<case>/diagnosis_ab_test_summary.csv` (includes `*_hp_capacity_kw` columns for replayed scenarios)
 - Diagnosis capacity-relaxation status summary: `Output Data/Single Dwelling Runs/randomized offset/<case>/diagnosis_capacity_relaxation_summary.csv`
@@ -111,6 +111,22 @@ This document is the working map of the project structure, model responsibilitie
 
 ## 6) Structure change log
 
+- `2026-04-01`:
+  - Updated `Experiment 6a` in `Codes/FullEnergyOptimizationDemo11.ipynb` to compute component-level energy and cost breakdowns from cached randomized-offset breakdowns:
+    - electricity split into `hp_elec_kw`, `ev_charge_kw`, and `appliance_kw` components,
+    - gas kept as `boiler_gas_kw`,
+    - all components priced on original un-offset tariff and exported in `exp6a_energy_cost_summary.csv`.
+  - Updated `Experiment 6a` infeasible-run replacement workflow to apply replacement at component level (not only total load), then recompute total electricity/gas curves from replaced components.
+  - Replaced Experiment 6a comparison plots with a two-subplot case layout:
+    - top subplot: `monovalent`,
+    - bottom subplot: `hybrid`,
+    - each subplot shows grouped component energy-cost bars (with explicit component legend) plus a line for mean peak demand.
+  - Updated `Experiment 6a` component-cost plot styling:
+    - keeps grouped component bars,
+    - renders legend from the top axis layer to avoid hidden legend in dual-axis plots,
+    - sets the peak-demand line to white with outlined markers for visibility.
+  - Fixed `Experiment 6a` grouped-bar legend labels to avoid Matplotlib `_nolegend_` entries by explicitly supplying component legend text (`baseload`, `heat pump`, `EV`, `gas`) plus mean-peak line label.
+  - Restored legacy `Experiment 6a` total-energy-cost vs peak-demand comparison line plots (both `peak_extreme_demand_kw` and `peak_mean_demand_kw`) alongside the component grouped-bar figure.
 - `2026-03-30`:
   - Added protocol rule: never execute experiment/data-update tasks directly; always provide runnable code for user-side execution.
   - Added protocol rule reinforcement: always re-open `markdowns/main.md` at the start of every new task before any actions.
