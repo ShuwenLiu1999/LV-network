@@ -18,7 +18,19 @@ from Residential_CIGRE_LV_network import R_LV_CIGRE
 
 from Load_aggregation import mc_assign_households, load_aggregation_by_nodes
 
-def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: float = 0.2, df_HHP_dir=None, df_HP_dir=None,out_dir: str = r"E:\GitHubProjects\LV network\Codes\Output", percentile: float = 0.95,numba=False):
+def run_and_save_monte_carlo_simulation(
+    n_samples: int = 100,
+    hhp_percentage: float = 0.2,
+    df_HHP_dir=None,
+    df_HP_dir=None,
+    out_dir: str | Path | None = None,
+    percentile: float = 0.95,
+    numba=False,
+):
+    repo_root = Path(__file__).resolve().parents[2]
+    output_dir = Path(out_dir) if out_dir is not None else repo_root / "Codes" / "Output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     if not 0.0 <= hhp_percentage <= 1.0:
         raise ValueError("HHP percentage must be between 0 and 1 inclusive.")
     if hhp_percentage ==1.0 or hhp_percentage == 0.0:
@@ -139,7 +151,7 @@ def run_and_save_monte_carlo_simulation(n_samples: int = 100, hhp_percentage: fl
     # Save to CSV with formatted HHP percentage in filename
     df_all.index.name = "monte_carlo_iter"
     perc_str = f"{int(hhp_percentage * 100):02d}p"
-    filename = f"{out_dir}/montecarlo_results_HHP_{perc_str}_{n_samples}samples.csv"
+    filename = output_dir / f"montecarlo_results_HHP_{perc_str}_{n_samples}samples.csv"
     df_all.to_csv(filename, index=False)
     print(f"Saved Monte Carlo results to: {filename}")
     # --------------------return percentiles of the results--------------------------

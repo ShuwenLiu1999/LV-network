@@ -62,11 +62,20 @@ def mc_assign_households(net, hhp_percentage=0.2, seed: int = None):
     return df_load_info
 
 
-def load_aggregation_by_nodes(df_load_info, df_HHP_dir, df_HP_dir,
-                              baseload_dir="E:\GitHubProjects\LV network\Data_for_CIGRE_Network\Baseload_from_SERL.csv",
-                              out_dir: str = None):
+def load_aggregation_by_nodes(
+    df_load_info,
+    df_HHP_dir,
+    df_HP_dir,
+    baseload_dir: str | Path | None = None,
+    out_dir: str | Path | None = None,
+):
     import pandas as pd
-    import os
+    repo_root = Path(__file__).resolve().parents[2]
+    baseload_path = (
+        Path(baseload_dir)
+        if baseload_dir is not None
+        else repo_root / "Data_for_CIGRE_Network" / "Baseload_from_SERL.csv"
+    )
 
     # Load HHP and HP profiles
     df_HHP = pd.read_csv(df_HHP_dir, index_col=0, parse_dates=True)
@@ -78,7 +87,7 @@ def load_aggregation_by_nodes(df_load_info, df_HHP_dir, df_HP_dir,
     # 1) Load and prepare the baseload profile
     # -------------------------------------------------------------------------
     df_base = pd.read_csv(
-        baseload_dir,
+        baseload_path,
         names=["x", "Pe_W"],  # assumes headerless file
         header=0,
     )
@@ -123,7 +132,8 @@ def load_aggregation_by_nodes(df_load_info, df_HHP_dir, df_HP_dir,
         )
 
     if out_dir is not None:
-        os.makedirs(out_dir, exist_ok=True)
-        df_load_by_nodes.to_csv(os.path.join(out_dir, "df_load_by_nodes.csv"))
+        out_path = Path(out_dir)
+        out_path.mkdir(parents=True, exist_ok=True)
+        df_load_by_nodes.to_csv(out_path / "df_load_by_nodes.csv")
 
     return df_load_by_nodes

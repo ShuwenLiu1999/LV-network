@@ -62,8 +62,8 @@ This file captures the reviewed assumptions and experiment definitions for the b
   - Sweeps offset ranges across hybrid and monovalent cases.
   - Saves per-dwelling multi-run breakdown outputs per case/offset folder.
 - Experiment 6a (cost summary on original tariff):
-  - Prices mean aggregated demand curves from Experiment 6 using un-offset original tariff.
-  - Reports electricity/gas/total energy costs plus peak metrics and comparison plots.
+  - Uses dwelling-level resampling over cached Experiment 6 runs: each replicate samples one run per dwelling, aggregates demand, and computes peak demand plus total energy cost under the un-offset original tariff.
+  - Repeats the replicate process to report mean and 95% CI for energy cost, and mean/95% CI plus extreme value for peak demand, alongside comparison plots.
 
 ## Diagnostic Notebook Summary
 - `Codes/Diagnose_HHP_Infeasibility.ipynb`:

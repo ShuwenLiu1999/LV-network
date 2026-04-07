@@ -65,9 +65,13 @@ This document is the working map of the project structure, model responsibilitie
 - Optional convergence plots: `..._convergence.png`
 - Optional per-dwelling stacked consumption plots: `Output Data/<subdir>/plots/exp5_cache_stackplots/<case>/dwelling_<id>_stacked_consumption.png`
 - Optional aggregate stacked consumption plot: `Output Data/<subdir>/plots/exp5_cache_stackplots/<case>/aggregate_stacked_consumption.png`
+- Experiment 3a aggregated demand + tariff plot: `Output Data/plots/exp3a_scenario_<scenario>_cases_<casegroup>_<N>cases_plot_stacked_demand_with_tariffs.png`
 - Penetration sweep summary table: `Output Data/<subdir>/ev_hhp_penetration_max_demand.csv`
 - Penetration contour plot: `Output Data/<subdir>/ev_hhp_penetration_contour_max_demand.png`
-- Experiment 6a electricity/gas/energy-cost summary: `Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv` (includes infeasible-handling counters when infeasible run curves are replaced by feasible-run mean dwelling curves; includes component breakdown columns for HP electricity, EV electricity, baseload electricity, and gas costs/energy)
+- Experiment 6a electricity/gas/energy-cost summary: `Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv` (includes infeasible-handling counters when infeasible run curves are replaced by feasible-run mean dwelling curves; includes component breakdown columns for HP electricity, EV electricity, baseload electricity, and gas costs/energy; peak/cost statistics are estimated from dwelling-level resampling replicates; includes 95% CI bound columns for mean peak demand, total energy cost, and component costs used in the grouped bar chart; `peak_extreme_demand_*` bound columns are point-equal boundaries because extreme peak is reported as an extreme overlay)
+- Experiment 6a plot outputs:
+  - `Output Data/plots/exp6a_scenario_<scenario>_cases_<casegroup>_tariff_<tarifffilter>_plot_component_cost_with_peak_mean.png`
+  - `Output Data/plots/exp6a_scenario_<scenario>_cases_<casegroup>_tariff_<tarifffilter>_plot_total_cost_vs_peak_mean.png` (mean-peak CI crosshair with overlaid dotted extreme-peak boundary line)
 - Experiment 6 per-folder monovalent HP-capacity summary: `Output Data/Single Dwelling Runs/randomized offset/<tariff>_monovalent_EV_<kW>kW_offset<X>h/dwelling_monovalent_hp_capacity_summary.csv` (one row per dwelling with max selected HP capacity across MC runs)
 - Diagnosis A/B per-pair summary: `Output Data/Single Dwelling Runs/randomized offset/<case>/diagnosis_ab_test_summary.csv` (includes `*_hp_capacity_kw` columns for replayed scenarios)
 - Diagnosis capacity-relaxation status summary: `Output Data/Single Dwelling Runs/randomized offset/<case>/diagnosis_capacity_relaxation_summary.csv`
@@ -111,6 +115,21 @@ This document is the working map of the project structure, model responsibilitie
 
 ## 6) Structure change log
 
+- `2026-04-06`:
+  - Updated `Experiment 6a` in `Codes/FullEnergyOptimizationDemo11.ipynb` to compute peak-demand and total-energy-cost statistics via dwelling-level resampling (each resample draws one run per dwelling, aggregates, and repeats for CI/mean/extreme estimates).
+  - Updated Experiment 6a peak-vs-total-cost plotting to keep 95% CI crosshair error bars for mean peak demand and total cost, while overlaying extreme peak demand as a dotted boundary line in the same mean-peak plot.
+  - Updated Experiment 6a grouped component-cost vs peak-demand plot to render 95% CI error bars on component bars, plus mean-peak 95% CI and extreme-peak dotted overlays on the peak line axis.
+  - Removed the separate `total_cost_vs_peak_extreme` plot output from the standard Experiment 6a output contract.
+  - Extended `exp6a_energy_cost_summary.csv` with CI bound columns for component costs (HP, EV, baseload, gas) in addition to mean peak demand and total energy cost, plus extreme-peak point-equal boundary columns and bootstrap sample count metadata.
+- `2026-04-03`:
+  - Updated `Experiment 6` in `Codes/FullEnergyOptimizationDemo11.ipynb` to support a user-defined total run target (`exp6_target_total_runs`) per dwelling-case-offset combination.
+  - Added existing-run detection for continuation using breakdown CSV run statistics so reruns only execute missing runs needed to reach the total target (rather than always adding a fixed batch size).
+  - Extended Experiment 6 summary output columns to include existing runs, runs added this execution, target runs, and final total runs per dwelling.
+- `2026-04-02`:
+  - Inspected and aligned plotting outputs to repository-level plot folder structure under `Output Data/plots`.
+  - Updated `Experiment 3a` in `Codes/FullEnergyOptimizationDemo11.ipynb` to save the aggregated multi-case demand+tariff figure to `Output Data/plots` with scenario/case/plot-type naming.
+  - Updated `Experiment 6a` in `Codes/FullEnergyOptimizationDemo11.ipynb` to save all generated figures (component grouped bars + two legacy peak-vs-total-cost lines) to `Output Data/plots` with scenario/case/tariff-filter/plot-type naming.
+  - Updated `Experiment 6` in `Codes/FullEnergyOptimizationDemo11.ipynb` continuation workflow so reruns add new MC runs to existing per-dwelling breakdown files (merge + dedupe by `run,time`) instead of overwriting prior data, and so monovalent HP-capacity summary CSV values are accumulated across existing + newly added runs.
 - `2026-04-01`:
   - Updated `Experiment 6a` in `Codes/FullEnergyOptimizationDemo11.ipynb` to compute component-level energy and cost breakdowns from cached randomized-offset breakdowns:
     - electricity split into `hp_elec_kw`, `ev_charge_kw`, and `appliance_kw` components,
