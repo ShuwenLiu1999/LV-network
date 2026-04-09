@@ -722,7 +722,11 @@ def run_monte_carlo_batch(
         raise ValueError("run_index_start must be >= 0")
     output_dir = repo_root / "Output Data" / output_subdir
     output_dir.mkdir(parents=True, exist_ok=True)
-    case_label = "HHP" if case == "hybrid" else ("MHP" if case == "monovalent" else str(case))
+    case_label = (
+        "HHP"
+        if case == "hybrid"
+        else ("MHP" if case == "monovalent" else ("Boiler-only" if case == "boiler_only" else str(case)))
+    )
 
     is_single = (mc_runs == 1) and (len(dwellings_to_run) == 1)
     single_detail = None
@@ -844,8 +848,11 @@ def run_monte_carlo_batch(
             elif case == "monovalent":
                 cap_candidates, qbo_max_kw = capacity_candidates, 0.0
                 hw_params = {"hw_mode": "hp_storage", "V_stor": 0.2, "V_stor_init": 0.12, "T_mains": 10.0, "T_hw_supply": 40.0, "Q_bo_hw_max": 0.0}
+            elif case == "boiler_only":
+                cap_candidates, qbo_max_kw = np.array([0.0]), 30.0
+                hw_params = {"hw_mode": "boiler_only", "V_stor": 0.0, "V_stor_init": 0.0, "T_mains": 10.0, "T_hw_supply": 40.0, "Q_hp_hw_max": 0.0}
             else:
-                raise ValueError("case must be either 'hybrid' or 'monovalent'")
+                raise ValueError("case must be one of: 'hybrid', 'monovalent', 'boiler_only'")
             hw_params.update(hw_params_cfg)
             if str(hw_params.get("hw_mode", "")).lower() == "boiler_only":
                 hw_params["V_stor"] = 0.0
@@ -1161,7 +1168,7 @@ def plot_monte_carlo_summary(
     )
 
     case_label_norm = str(mc_results.get("case_label", "")).strip().lower()
-    include_hhp_gas = case_label_norm in {"hhp", "hybrid"}
+    include_hhp_gas = case_label_norm in {"hhp", "hybrid", "boiler", "boiler-only", "boiler_only"}
     gas_mean: np.ndarray | None = None
     if include_hhp_gas and mc_results.get("agg_gas_curves"):
         gas_array = np.vstack(mc_results["agg_gas_curves"])

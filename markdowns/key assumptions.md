@@ -16,6 +16,7 @@ This file captures the reviewed assumptions and experiment definitions for the b
 - Hot-water demand is exogenous (volume/time-step) and must be met by system constraints.
 - Hybrid defaults use boiler-only DHW (`Q_hp_hw_max = 0`) unless overridden.
 - Monovalent defaults use HP storage DHW with boiler contribution disabled (`Q_bo_hw_max = 0`) unless overridden.
+- Boiler-only case defaults disable HP output for both space and DHW (`Qhp_max = 0`, `Q_hp_hw_max = 0`) and use boiler supply for heating and DHW unless overridden.
 - Storage formulation (when enabled) uses fixed tank temperature (`T_stor = T_stor_max`) and volume-energy balance; no explicit standby-loss dynamics.
 - EV availability profile is exogenous binary mask.
 - EV travel energy is exogenous and subtracted from SOC each step.
@@ -59,10 +60,10 @@ This file captures the reviewed assumptions and experiment definitions for the b
 - Experiment 5 (cache-based stacked profiles):
   - Generates per-dwelling or all-dwelling stacked demand plots from cache folders.
 - Experiment 6 (randomized daily tariff offsets):
-  - Sweeps offset ranges across hybrid and monovalent cases.
+  - Sweeps offset ranges across hybrid, monovalent, and boiler-only cases.
   - Saves per-dwelling multi-run breakdown outputs per case/offset folder.
 - Experiment 6a (cost summary on original tariff):
-  - Uses dwelling-level resampling over cached Experiment 6 runs: each replicate samples one run per dwelling, aggregates demand, and computes peak demand plus total energy cost under the un-offset original tariff.
+  - Uses dwelling-level resampling over cached Experiment 6 runs: each replicate samples one run per dwelling, aggregates demand, and computes peak demand plus total energy cost under the un-offset original tariff for hybrid, monovalent, and boiler-only cases.
   - Repeats the replicate process to report mean and 95% CI for energy cost, and mean/95% CI plus extreme value for peak demand, alongside comparison plots.
 
 ## Diagnostic Notebook Summary
