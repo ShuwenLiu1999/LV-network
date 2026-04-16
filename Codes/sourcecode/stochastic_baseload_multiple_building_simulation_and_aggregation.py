@@ -1849,7 +1849,10 @@ def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"No dwelling breakdown cache files found in {case_dir}")
 
     base_by_dwelling: dict[str, np.ndarray] = {}
+    hp_by_dwelling: dict[str, np.ndarray] = {}
+    appliance_by_dwelling: dict[str, np.ndarray] = {}
     ev_by_dwelling: dict[str, np.ndarray] = {}
+    boiler_by_dwelling: dict[str, np.ndarray] = {}
     n_runs_ref: int | None = None
     n_steps_ref: int | None = None
 
@@ -1858,7 +1861,15 @@ def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
         if not match:
             continue
         dwelling_id = match.group(1)
-        df = pd.read_csv(path, usecols=["run", "time", "hp_elec_kw", "ev_charge_kw", "appliance_kw"])
+        try:
+            df = pd.read_csv(
+                path,
+                usecols=["run", "time", "hp_elec_kw", "ev_charge_kw", "appliance_kw", "boiler_gas_kw"],
+            )
+        except ValueError:
+            # Older cache files may not carry boiler_gas_kw.
+            df = pd.read_csv(path, usecols=["run", "time", "hp_elec_kw", "ev_charge_kw", "appliance_kw"])
+            df["boiler_gas_kw"] = 0.0
         if df.empty:
             continue
 
@@ -1887,9 +1898,17 @@ def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
         hp = pd.to_numeric(df["hp_elec_kw"], errors="coerce").fillna(0.0).to_numpy()
         app = pd.to_numeric(df["appliance_kw"], errors="coerce").fillna(0.0).to_numpy()
         ev = pd.to_numeric(df["ev_charge_kw"], errors="coerce").fillna(0.0).to_numpy()
+        boiler = pd.to_numeric(df["boiler_gas_kw"], errors="coerce").fillna(0.0).to_numpy()
 
-        base_by_dwelling[dwelling_id] = (hp + app).reshape(n_runs, n_steps).astype(np.float32, copy=False)
-        ev_by_dwelling[dwelling_id] = ev.reshape(n_runs, n_steps).astype(np.float32, copy=False)
+        hp_arr = hp.reshape(n_runs, n_steps).astype(np.float32, copy=False)
+        app_arr = app.reshape(n_runs, n_steps).astype(np.float32, copy=False)
+        ev_arr = ev.reshape(n_runs, n_steps).astype(np.float32, copy=False)
+        boiler_arr = boiler.reshape(n_runs, n_steps).astype(np.float32, copy=False)
+        base_by_dwelling[dwelling_id] = hp_arr + app_arr
+        hp_by_dwelling[dwelling_id] = hp_arr
+        appliance_by_dwelling[dwelling_id] = app_arr
+        ev_by_dwelling[dwelling_id] = ev_arr
+        boiler_by_dwelling[dwelling_id] = boiler_arr
 
     if not base_by_dwelling:
         raise FileNotFoundError(f"No valid dwelling cache files parsed in {case_dir}")
@@ -1898,7 +1917,10 @@ def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
 
     return {
         "base_by_dwelling": base_by_dwelling,
+        "hp_by_dwelling": hp_by_dwelling,
+        "appliance_by_dwelling": appliance_by_dwelling,
         "ev_by_dwelling": ev_by_dwelling,
+        "boiler_by_dwelling": boiler_by_dwelling,
         "n_runs": int(n_runs_ref),
         "n_steps": int(n_steps_ref),
     }
@@ -2125,6 +2147,223 @@ def run_hhp_mhp_ev_penetration_experiment_from_cache(
         pbar.close()
 
     result_df = pd.DataFrame(results).sort_values(["hhp_percentage", "ev_penetration"]).reset_index(drop=True)
+    if save_path is not None:
+        out_path = Path(save_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        result_df.to_csv(out_path, index=False)
+    return result_df
+
+
+def run_hhp_mhp_boiler_penetration_experiment_from_cache(
+    *,
+    cache_root: str | Path | None = None,
+    hybrid_cache_dir: str | Path | None = None,
+    monovalent_cache_dir: str | Path | None = None,
+    boiler_cache_dir: str | Path | None = None,
+    ev_penetration: float,
+    hhp_percentages: Sequence[float],
+    mhp_percentages: Sequence[float],
+    mc_runs_per_pixel: int = 100,
+    random_seed: int = 42,
+    save_path: str | Path | None = None,
+    use_generated_ev_profiles: bool = False,
+    ev_gen_params: Mapping[str, Any] | None = None,
+    show_progress: bool = True,
+) -> pd.DataFrame:
+    """Run cache MC with fixed EV penetration and mixed HHP/MHP/boiler heating.
+
+    Pixels are defined by (HHP share, MHP share). Any remaining share is assigned
+    to boiler-only homes. Boiler homes include appliance demand and can still host
+    EVs. Peak demand is aggregated on electricity demand only.
+    Only physically valid pixels are simulated: HHP + MHP <= 1.
+    """
+    if hybrid_cache_dir is None or monovalent_cache_dir is None or boiler_cache_dir is None:
+        if cache_root is None:
+            raise ValueError(
+                "Provide cache_root or all cache dirs: hybrid_cache_dir, monovalent_cache_dir, boiler_cache_dir."
+            )
+        cache_root = Path(cache_root)
+        hybrid_cache_dir = cache_root / "hybrid"
+        monovalent_cache_dir = cache_root / "monovalent"
+        boiler_cache_dir = cache_root / "boiler_only"
+
+    hybrid_cache = _load_case_breakdown_cache(Path(hybrid_cache_dir))
+    monovalent_cache = _load_case_breakdown_cache(Path(monovalent_cache_dir))
+    boiler_cache = _load_case_breakdown_cache(Path(boiler_cache_dir))
+
+    hybrid_ids = set(hybrid_cache["base_by_dwelling"].keys())
+    monovalent_ids = set(monovalent_cache["base_by_dwelling"].keys())
+    boiler_ids = set(boiler_cache["base_by_dwelling"].keys())
+    common_ids = sorted(hybrid_ids & monovalent_ids & boiler_ids, key=_dwelling_sort_key)
+    if not common_ids:
+        raise ValueError(
+            "No common dwelling IDs across hybrid, monovalent, and boiler-only cache folders."
+        )
+
+    n_runs_h = int(hybrid_cache["n_runs"])
+    n_runs_m = int(monovalent_cache["n_runs"])
+    n_runs_b = int(boiler_cache["n_runs"])
+    n_steps_h = int(hybrid_cache["n_steps"])
+    n_steps_m = int(monovalent_cache["n_steps"])
+    n_steps_b = int(boiler_cache["n_steps"])
+    if not (n_steps_h == n_steps_m == n_steps_b):
+        raise ValueError(
+            f"Step count mismatch: hybrid={n_steps_h}, monovalent={n_steps_m}, boiler_only={n_steps_b}"
+        )
+
+    hybrid_base = np.stack([hybrid_cache["base_by_dwelling"][d] for d in common_ids], axis=0)
+    hybrid_ev = np.stack([hybrid_cache["ev_by_dwelling"][d] for d in common_ids], axis=0)
+    monovalent_base = np.stack([monovalent_cache["base_by_dwelling"][d] for d in common_ids], axis=0)
+    monovalent_ev = np.stack([monovalent_cache["ev_by_dwelling"][d] for d in common_ids], axis=0)
+    boiler_app = np.stack([boiler_cache["appliance_by_dwelling"][d] for d in common_ids], axis=0)
+    boiler_ev = np.stack([boiler_cache["ev_by_dwelling"][d] for d in common_ids], axis=0)
+
+    n_dwellings = len(common_ids)
+    n_steps = n_steps_h
+    ev_frac = _normalize_penetration_values([ev_penetration])[0]
+    hhp_fracs = _normalize_penetration_values(hhp_percentages)
+    mhp_fracs = _normalize_penetration_values(mhp_percentages)
+    mc_runs_per_pixel = int(mc_runs_per_pixel)
+    if mc_runs_per_pixel <= 0:
+        raise ValueError("mc_runs_per_pixel must be > 0")
+
+    rng = np.random.default_rng(int(random_seed))
+    ev_pool = None
+    if use_generated_ev_profiles:
+        cfg = dict(ev_gen_params or {})
+        pool_size = int(cfg.pop("ev_profile_pool_size", 2000))
+        if pool_size <= 0:
+            raise ValueError("ev_profile_pool_size must be > 0")
+        ev_pool = _generate_homogeneous_ev_profile_pool(
+            n_profiles=pool_size,
+            n_steps=n_steps,
+            rng=rng,
+            params=cfg,
+        )
+
+    # Enforce composition constraint: HHP and MHP shares cannot exceed 100% combined.
+    pixels: list[tuple[float, float]] = [
+        (float(hhp_frac), float(mhp_frac))
+        for hhp_frac in hhp_fracs
+        for mhp_frac in mhp_fracs
+        if float(hhp_frac) + float(mhp_frac) <= 1.0 + 1e-9
+    ]
+    if not pixels:
+        raise ValueError("No valid pixels available: require HHP + MHP <= 100%.")
+    results: list[dict[str, Any]] = []
+    pbar = None
+    if show_progress:
+        pbar = tqdm(total=len(pixels), desc="Penetration pixels (4a)", dynamic_ncols=True, leave=True, mininterval=0.1)
+        pbar.refresh()
+
+    for hhp_frac, mhp_frac in pixels:
+        boiler_frac = max(0.0, 1.0 - hhp_frac - mhp_frac)
+
+        n_hhp = int(round(hhp_frac * n_dwellings))
+        n_mhp = int(round(mhp_frac * n_dwellings))
+        n_ev = int(round(ev_frac * n_dwellings))
+        n_hhp = min(max(n_hhp, 0), n_dwellings)
+        n_mhp = min(max(n_mhp, 0), n_dwellings)
+        n_ev = min(max(n_ev, 0), n_dwellings)
+
+        if n_hhp + n_mhp > n_dwellings:
+            overflow = n_hhp + n_mhp - n_dwellings
+            reduce_mhp = min(overflow, n_mhp)
+            n_mhp -= reduce_mhp
+            overflow -= reduce_mhp
+            if overflow > 0:
+                n_hhp -= min(overflow, n_hhp)
+
+        n_boiler = n_dwellings - n_hhp - n_mhp
+        peaks = np.zeros(mc_runs_per_pixel, dtype=np.float32)
+        all_idx = np.arange(n_dwellings, dtype=int)
+
+        for i in range(mc_runs_per_pixel):
+            hhp_idx = (
+                rng.choice(n_dwellings, size=n_hhp, replace=False)
+                if n_hhp > 0
+                else np.array([], dtype=int)
+            )
+            non_hhp_idx = np.setdiff1d(all_idx, hhp_idx, assume_unique=True)
+            mhp_idx = (
+                rng.choice(non_hhp_idx, size=n_mhp, replace=False)
+                if n_mhp > 0
+                else np.array([], dtype=int)
+            )
+            boiler_idx = np.setdiff1d(non_hhp_idx, mhp_idx, assume_unique=True)
+
+            ev_idx = (
+                rng.choice(n_dwellings, size=n_ev, replace=False)
+                if n_ev > 0
+                else np.array([], dtype=int)
+            )
+            ev_mask = np.zeros(n_dwellings, dtype=bool)
+            ev_mask[ev_idx] = True
+
+            agg = np.zeros(n_steps, dtype=np.float32)
+            if hhp_idx.size:
+                run_idx_h = rng.integers(0, n_runs_h, size=hhp_idx.size)
+                agg += hybrid_base[hhp_idx, run_idx_h, :].sum(axis=0)
+                if not use_generated_ev_profiles:
+                    hhp_ev_mask = ev_mask[hhp_idx]
+                    if np.any(hhp_ev_mask):
+                        agg += hybrid_ev[hhp_idx[hhp_ev_mask], run_idx_h[hhp_ev_mask], :].sum(axis=0)
+
+            if mhp_idx.size:
+                run_idx_m = rng.integers(0, n_runs_m, size=mhp_idx.size)
+                agg += monovalent_base[mhp_idx, run_idx_m, :].sum(axis=0)
+                if not use_generated_ev_profiles:
+                    mhp_ev_mask = ev_mask[mhp_idx]
+                    if np.any(mhp_ev_mask):
+                        agg += monovalent_ev[mhp_idx[mhp_ev_mask], run_idx_m[mhp_ev_mask], :].sum(axis=0)
+
+            if boiler_idx.size:
+                run_idx_b = rng.integers(0, n_runs_b, size=boiler_idx.size)
+                agg += boiler_app[boiler_idx, run_idx_b, :].sum(axis=0)
+                if not use_generated_ev_profiles:
+                    boiler_ev_mask = ev_mask[boiler_idx]
+                    if np.any(boiler_ev_mask):
+                        agg += boiler_ev[boiler_idx[boiler_ev_mask], run_idx_b[boiler_ev_mask], :].sum(axis=0)
+
+            if use_generated_ev_profiles and n_ev > 0:
+                if ev_pool is None:
+                    raise RuntimeError("EV profile pool was not initialized.")
+                ev_pick = rng.integers(0, ev_pool.shape[0], size=n_ev)
+                agg += ev_pool[ev_pick, :].sum(axis=0)
+
+            peaks[i] = float(agg.max())
+
+        results.append(
+            {
+                "ev_penetration": ev_frac,
+                "hhp_percentage": hhp_frac,
+                "mhp_percentage": mhp_frac,
+                "boiler_percentage": float(max(0.0, 1.0 - hhp_frac - mhp_frac)),
+                "valid_mix": True,
+                "n_dwellings": n_dwellings,
+                "n_ev_homes": n_ev,
+                "n_hhp_homes": n_hhp,
+                "n_mhp_homes": n_mhp,
+                "n_boiler_homes": n_boiler,
+                "mc_runs_per_pixel": mc_runs_per_pixel,
+                "max_demand_mean_kw": float(np.mean(peaks)),
+                "max_demand_std_kw": float(np.std(peaks, ddof=0)),
+                "max_demand_p50_kw": float(np.percentile(peaks, 50)),
+                "max_demand_p90_kw": float(np.percentile(peaks, 90)),
+                "max_demand_p95_kw": float(np.percentile(peaks, 95)),
+                "max_demand_max_kw": float(np.max(peaks)),
+                "max_demand_min_kw": float(np.min(peaks)),
+            }
+        )
+        if pbar is not None:
+            pbar.update(1)
+            pbar.set_postfix({"HHP%": round(hhp_frac * 100, 1), "MHP%": round(mhp_frac * 100, 1)}, refresh=False)
+            pbar.refresh()
+
+    if pbar is not None:
+        pbar.close()
+
+    result_df = pd.DataFrame(results).sort_values(["hhp_percentage", "mhp_percentage"]).reset_index(drop=True)
     if save_path is not None:
         out_path = Path(save_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)

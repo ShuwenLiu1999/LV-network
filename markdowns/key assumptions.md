@@ -57,6 +57,12 @@ This file captures the reviewed assumptions and experiment definitions for the b
 - Experiment 4 (EV penetration x HHP share from cache):
   - Performs grid MC mixing of hybrid/monovalent cached breakdowns.
   - Reports max-demand statistics per pixel and contour visualization.
+- Experiment 4a (fixed EV penetration x HHP/MHP share from cache):
+  - Holds EV penetration constant and sweeps a 2D grid of `HHP` share (y-axis) and `MHP` share (x-axis).
+  - Assigns the residual share (`1 - HHP - MHP`) to boiler-only homes (from dedicated `boiler_only` cache), and keeps only physically valid pixels where `HHP + MHP <= 1`.
+  - Invalid penetration pairs (`HHP + MHP > 1`) are excluded at sampling stage rather than kept as NaN rows.
+  - Peak-demand metric for Experiment 4a is electricity-only; boiler dwellings contribute appliance + EV electric components, while `boiler_gas_kw` is excluded.
+  - Reports max-demand statistics and contour visualization over the HHP/MHP plane.
 - Experiment 5 (cache-based stacked profiles):
   - Generates per-dwelling or all-dwelling stacked demand plots from cache folders.
 - Experiment 6 (randomized daily tariff offsets):
