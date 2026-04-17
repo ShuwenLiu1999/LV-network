@@ -71,6 +71,11 @@ This file captures the reviewed assumptions and experiment definitions for the b
 - Experiment 6a (cost summary on original tariff):
   - Uses dwelling-level resampling over cached Experiment 6 runs: each replicate samples one run per dwelling, aggregates demand, and computes peak demand plus total energy cost under the un-offset original tariff for hybrid, monovalent, and boiler-only cases.
   - Repeats the replicate process to report mean and 95% CI for energy cost, and mean/95% CI plus extreme value for peak demand, alongside comparison plots.
+- Experiment 6b (single-dwelling gas convergence from all-year cache):
+  - Reads one dwelling breakdown file and computes per-run total gas, then running-mean convergence by run index.
+- Experiment 6c (HHP vs pure-boiler annual gas comparison from all-year cache):
+  - Uses `hybrid` and `boiler_only` case folders and computes annualized gas consumption per run from `boiler_gas_kw`.
+  - Limits the analysis to the first `N` run IDs per dwelling file (`exp6c_max_runs_per_dwelling`, default `5`; `None` uses all runs).
 
 ## Diagnostic Notebook Summary
 - `Codes/Diagnose_HHP_Infeasibility.ipynb`:

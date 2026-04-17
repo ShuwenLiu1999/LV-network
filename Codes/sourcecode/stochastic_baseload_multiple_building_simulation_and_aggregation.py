@@ -125,13 +125,40 @@ def sample_stochastic_profiles(
     return profile_data, {key: chosen_indices for key in profile_column_map}
 
 
+def _parse_weather_timestamp(series: pd.Series) -> pd.Series:
+    """Parse mixed timestamp formats deterministically.
+
+    Supported canonical forms:
+    - YYYY-mm-dd HH:MM:SS
+    - dd/mm/YYYY HH:MM:SS
+
+    Extra spaces are normalized before parsing.
+    """
+    raw = series.astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+    parsed = pd.to_datetime(raw, format="%Y-%m-%d %H:%M:%S", errors="coerce")
+
+    missing = parsed.isna()
+    if missing.any():
+        parsed.loc[missing] = pd.to_datetime(
+            raw.loc[missing], format="%d/%m/%Y %H:%M:%S", errors="coerce"
+        )
+
+    missing = parsed.isna()
+    if missing.any():
+        # Final fallback for uncommon formats while keeping day-first interpretation.
+        parsed.loc[missing] = pd.to_datetime(raw.loc[missing], errors="coerce", dayfirst=True)
+    return parsed
+
+
 def _load_weather(weather_path: Path, weather_columns: Mapping[str, str], step: str) -> pd.DataFrame:
     """Load weather CSV and normalize it to a datetime index."""
     weather = pd.read_csv(weather_path, comment="#")
     time_col = weather_columns["time"]
     if time_col in weather.columns:
-        weather[time_col] = pd.to_datetime(weather[time_col], errors="coerce", dayfirst=True)
+        weather[time_col] = _parse_weather_timestamp(weather[time_col])
         weather = weather.dropna(subset=[time_col]).set_index(time_col)
+        if weather.empty:
+            raise ValueError(f"Unable to parse weather timestamps from {weather_path}")
     else:
         weather.index = pd.date_range("2020-01-01", periods=len(weather), freq=step)
     return weather.sort_index()
@@ -202,16 +229,28 @@ def prepare_workflow_inputs(
     if solar.max() > 2000:
         solar = solar / dt_seconds
 
+    requested_n_days = int(n_days)
     start_ts = weather.index[0].normalize() if start_date is None else pd.Timestamp(start_date)
-    end_ts = start_ts + pd.Timedelta(days=int(n_days))
+    end_ts = start_ts + pd.Timedelta(days=requested_n_days)
     window = weather.loc[start_ts : end_ts - pd.Timedelta(step)]
     if window.empty:
         raise ValueError(f"Weather data does not cover {start_ts:%Y-%m-%d} to {end_ts:%Y-%m-%d}")
+    # Keep the simulation horizon on whole-day boundaries so profile sampling and
+    # time-series arrays always have matching lengths.
+    trailing_steps = int(len(window) % steps_per_day)
+    if trailing_steps:
+        window = window.iloc[:-trailing_steps]
+    if len(window) < steps_per_day:
+        raise ValueError(
+            f"Weather window is shorter than one full day after alignment: {len(window)} steps "
+            f"(step={step}, start={start_ts:%Y-%m-%d}, requested_days={requested_n_days})."
+        )
+    actual_n_days = int(len(window) // steps_per_day)
 
     tout_arr = tout.loc[window.index].to_numpy()
     solar_arr = solar.loc[window.index].to_numpy()
 
-    tariff = build_tariff(window.index[0], n_days=int(n_days), step=step, type=tariff_type)
+    tariff = build_tariff(window.index[0], n_days=actual_n_days, step=step, type=tariff_type)
     if not tariff.index.equals(window.index):
         tariff = tariff.reindex(window.index, method="ffill")
 
@@ -230,7 +269,7 @@ def prepare_workflow_inputs(
         occ = int(row[occ_col])
         profile_path = find_occ_profile_file(profile_root, occ)
         profiles, chosen = sample_stochastic_profiles(
-            profile_path, int(n_days), steps_per_day, rng, profile_column_map
+            profile_path, actual_n_days, steps_per_day, rng, profile_column_map
         )
 
         appliance = profiles["appliance"]
@@ -259,7 +298,8 @@ def prepare_workflow_inputs(
         "window": window,
         "step": step,
         "steps_per_day": steps_per_day,
-        "n_days": int(n_days),
+        "n_days": actual_n_days,
+        "requested_n_days": requested_n_days,
         "dt_seconds": float(dt_seconds),
         "tariff": tariff,
         "n_steps": len(tariff),
@@ -331,6 +371,88 @@ def _compute_ev_travel_energy(
         ev_travel_energy[away_idx] = daily_ev_kwh[day] / len(away_idx)
 
     return ev_travel_energy
+
+
+def _ev_predeparture_feasible(
+    *,
+    tariff_index: pd.DatetimeIndex,
+    ev_availability: np.ndarray,
+    ev_travel_energy: np.ndarray,
+    dt_seconds: float,
+    ev_capacity: float | None,
+    ev_soc_init: float | None,
+    ev_target: float,
+    ev_charge_max: float | None,
+    eta_ev_charge: float,
+    ev_retention: float,
+    ev_min_final_fraction: float,
+) -> tuple[bool, str]:
+    """Fast feasibility screen for EV charging before running the optimizer.
+
+    It checks whether the EV can satisfy the model's hard pre-departure SOC target
+    under maximum possible charging power and the sampled availability profile.
+    """
+    if ev_capacity is None:
+        return True, ""
+    ev_capacity = float(ev_capacity)
+    if ev_capacity <= 0:
+        return True, ""
+    if ev_capacity < 0:
+        return False, "ev_capacity must be non-negative."
+
+    n_steps = len(tariff_index)
+    avail = np.asarray(ev_availability, dtype=float).reshape(-1)
+    travel = np.asarray(ev_travel_energy, dtype=float).reshape(-1)
+    if len(avail) != n_steps or len(travel) != n_steps:
+        return False, "EV availability/travel arrays must match tariff length."
+
+    dt_hours = float(dt_seconds) / 3600.0
+    if dt_hours <= 0:
+        return False, "Invalid dt_seconds for EV precheck."
+
+    ev_power_cap = float(ev_charge_max if ev_charge_max is not None else ev_capacity)
+    if ev_power_cap < 0:
+        return False, "ev_charge_max must be non-negative."
+    charge_factor = np.clip(avail, 0.0, 1.0)
+    max_charge_gain = ev_power_cap * dt_hours * float(max(eta_ev_charge, 0.0)) * charge_factor
+
+    soc0 = float(ev_capacity if ev_soc_init is None else ev_soc_init)
+    min_target = max(float(ev_target), float(ev_min_final_fraction) * ev_capacity)
+    if min_target > ev_capacity + 1e-9:
+        return False, f"Required EV target ({min_target:.2f} kWh) exceeds capacity ({ev_capacity:.2f} kWh)."
+
+    soc_max = np.empty(n_steps, dtype=float)
+    for t in range(n_steps):
+        prev_soc = soc0 if t == 0 else soc_max[t - 1]
+        candidate = prev_soc * float(ev_retention) + max_charge_gain[t] - travel[t]
+        if candidate < -1e-9:
+            return False, (
+                f"Max-achievable SOC drops below zero at step {t} "
+                f"(candidate={candidate:.3f} kWh)."
+            )
+        soc_max[t] = min(ev_capacity, max(candidate, 0.0))
+
+    days = tariff_index.normalize().unique()
+    norm_idx = tariff_index.normalize()
+    for day in days:
+        day_indices = np.where(norm_idx == day)[0]
+        if day_indices.size == 0:
+            continue
+        dep_idx = None
+        for i in day_indices:
+            if avail[i] < 0.5:
+                dep_idx = int(i)
+                break
+        if dep_idx is None:
+            continue
+        target_idx = dep_idx - 1 if dep_idx > 0 else dep_idx
+        if soc_max[target_idx] + 1e-9 < min_target:
+            return False, (
+                f"Insufficient pre-departure charging on {pd.Timestamp(day).date()}: "
+                f"max_soc={soc_max[target_idx]:.2f} kWh, target={min_target:.2f} kWh."
+            )
+
+    return True, ""
 
 
 def run_single_dwelling_case(
@@ -709,6 +831,10 @@ def run_monte_carlo_batch(
     ev_params_cfg = dict(ev_params_cfg or {})
     hw_params_cfg = dict(hw_params_cfg or {})
     tariff_random_offset_cfg = dict(tariff_random_offset_cfg or {})
+    ev_precheck_enabled = bool(ev_params_cfg.pop("ev_precheck_enabled", True))
+    ev_precheck_max_resamples = int(ev_params_cfg.pop("ev_precheck_max_resamples", 50))
+    if ev_precheck_max_resamples < 0:
+        raise ValueError("ev_precheck_max_resamples must be >= 0")
 
     case = str(case).lower().strip()
     capacity_candidates = np.asarray(capacity_candidates_kw if capacity_candidates_kw is not None else np.arange(7.0, 10.5, 0.5), dtype=float)
@@ -770,54 +896,109 @@ def run_monte_carlo_batch(
 
             rng_profiles = np.random.default_rng(10_000 * run + _stable_dwelling_seed(dwelling_id))
             profiles, chosen = sample_stochastic_profiles(profile_path, n_days, steps_per_day, rng_profiles, context["profile_column_map"])
+            ev_can_resample_profiles = "ev_availability" not in ev_params_cfg
+            ev_can_resample_travel = "ev_travel_energy" not in ev_params_cfg
+            ev_resample_attempt = 0
+            ev_precheck_passed = True
+            ev_precheck_reason = ""
 
-            hw_demand_m3 = np.asarray(profiles["hotwater"], dtype=float) / 1000.0
-            appliance_profile = np.asarray(profiles["appliance"], dtype=float)
-            base_electric = appliance_profile * 1000 if np.nanmax(appliance_profile) < 50 else appliance_profile
-            thermal_gains = np.asarray(profiles["thermal_gains"], dtype=float)
-            ev_availability = np.asarray(profiles["ev_availability"], dtype=float)
+            while True:
+                hw_demand_m3 = np.asarray(profiles["hotwater"], dtype=float) / 1000.0
+                appliance_profile = np.asarray(profiles["appliance"], dtype=float)
+                base_electric = appliance_profile * 1000 if np.nanmax(appliance_profile) < 50 else appliance_profile
+                thermal_gains = np.asarray(profiles["thermal_gains"], dtype=float)
+                ev_availability = np.asarray(profiles["ev_availability"], dtype=float)
+                other_elec = base_electric / 1000.0
+                if len(other_elec) != n_steps:
+                    raise ValueError(
+                        f"Sampled profile length mismatch for dwelling {dwelling_id}: "
+                        f"sampled_steps={len(other_elec)} vs simulation_steps={n_steps}. "
+                        "Rebuild context so n_days and weather window are aligned."
+                    )
+
+                ev_params = {
+                    "ev_capacity": 60.0,
+                    "ev_soc_init": 0.8 * 60.0,
+                    "ev_target": 0.8 * 60.0,
+                    "ev_charge_max": 3.0,
+                    "eta_ev_charge": 0.95,
+                    "ev_min_final_fraction": 0.8,
+                    "ev_retention": 0.999,
+                }
+                ev_params.update(ev_params_cfg)
+
+                # Always align EV availability to the sampled profile unless explicitly overridden.
+                if "ev_availability" in ev_params_cfg:
+                    ev_availability_arr = np.asarray(ev_params_cfg["ev_availability"], dtype=float)
+                else:
+                    ev_availability_arr = ev_availability
+                if len(ev_availability_arr) != n_steps:
+                    raise ValueError("ev_availability override must match simulation horizon length.")
+                ev_params["ev_availability"] = ev_availability_arr
+
+                # Travel profile can be fully overridden, or generated from seeded stochastic mileage.
+                ev_seed_base = int(ev_params_cfg.get("ev_seed", 1_000 * run + _stable_dwelling_seed(dwelling_id)))
+                if "ev_travel_energy" in ev_params_cfg:
+                    ev_travel_energy = np.asarray(ev_params_cfg["ev_travel_energy"], dtype=float)
+                    if len(ev_travel_energy) != n_steps:
+                        raise ValueError("ev_travel_energy override must match simulation horizon length.")
+                else:
+                    ev_seed = int(ev_seed_base + ev_resample_attempt)
+                    ev_travel_energy = _compute_ev_travel_energy(
+                        ev_availability_arr,
+                        tariff.index,
+                        n_days,
+                        rng_seed=ev_seed,
+                    )
+                ev_params["ev_travel_energy"] = ev_travel_energy
+
+                if not ev_precheck_enabled:
+                    break
+
+                ev_ok, ev_msg = _ev_predeparture_feasible(
+                    tariff_index=tariff.index,
+                    ev_availability=ev_availability_arr,
+                    ev_travel_energy=ev_travel_energy,
+                    dt_seconds=dt_seconds,
+                    ev_capacity=ev_params.get("ev_capacity"),
+                    ev_soc_init=ev_params.get("ev_soc_init"),
+                    ev_target=float(ev_params.get("ev_target", 0.0)),
+                    ev_charge_max=ev_params.get("ev_charge_max"),
+                    eta_ev_charge=float(ev_params.get("eta_ev_charge", 0.95)),
+                    ev_retention=float(ev_params.get("ev_retention", 1.0)),
+                    ev_min_final_fraction=float(ev_params.get("ev_min_final_fraction", 0.8)),
+                )
+                if ev_ok:
+                    break
+
+                if ev_can_resample_profiles or ev_can_resample_travel:
+                    if ev_resample_attempt >= ev_precheck_max_resamples:
+                        ev_precheck_passed = False
+                        ev_precheck_reason = (
+                            f"EV precheck infeasible after {ev_resample_attempt} resamples: {ev_msg}"
+                        )
+                        break
+                    ev_resample_attempt += 1
+                    if ev_can_resample_profiles:
+                        profiles, chosen = sample_stochastic_profiles(
+                            profile_path, n_days, steps_per_day, rng_profiles, context["profile_column_map"]
+                        )
+                    continue
+
+                ev_precheck_passed = False
+                ev_precheck_reason = (
+                    "EV precheck infeasible and cannot resample because EV availability/travel "
+                    f"are user-overridden: {ev_msg}"
+                )
+                break
+
             # Appliance demand does not depend on optimization feasibility.
-            other_elec = base_electric / 1000.0
             agg_app_kw += np.asarray(other_elec)
             agg_elec_kw += np.asarray(other_elec)
 
             for day_idx, run_idx in enumerate(chosen["hotwater"]):
                 profile_usage.append({"run": run, "dwelling_id": dwelling_id, "day": day_idx, "stochastic_run_idx": run_idx})
 
-            ev_params = {
-                "ev_capacity": 60.0,
-                "ev_soc_init": 0.8 * 60.0,
-                "ev_target": 0.8 * 60.0,
-                "ev_charge_max": 3.0,
-                "eta_ev_charge": 0.95,
-                "ev_min_final_fraction": 0.8,
-                "ev_retention": 0.999,
-            }
-            ev_params.update(ev_params_cfg)
-
-            # Always align EV availability to the sampled profile unless explicitly overridden.
-            if "ev_availability" in ev_params_cfg:
-                ev_availability_arr = np.asarray(ev_params_cfg["ev_availability"], dtype=float)
-            else:
-                ev_availability_arr = ev_availability
-            if len(ev_availability_arr) != n_steps:
-                raise ValueError("ev_availability override must match simulation horizon length.")
-            ev_params["ev_availability"] = ev_availability_arr
-
-            # Travel profile can be fully overridden, or generated from seeded stochastic mileage.
-            if "ev_travel_energy" in ev_params_cfg:
-                ev_travel_energy = np.asarray(ev_params_cfg["ev_travel_energy"], dtype=float)
-                if len(ev_travel_energy) != n_steps:
-                    raise ValueError("ev_travel_energy override must match simulation horizon length.")
-            else:
-                ev_seed = int(ev_params_cfg.get("ev_seed", 1_000 * run + _stable_dwelling_seed(dwelling_id)))
-                ev_travel_energy = _compute_ev_travel_energy(
-                    ev_availability_arr,
-                    tariff.index,
-                    n_days,
-                    rng_seed=ev_seed,
-                )
-            ev_params["ev_travel_energy"] = ev_travel_energy
             # ev_seed is a convenience config key and should not be passed to the optimizer.
             ev_params.pop("ev_seed", None)
 
@@ -872,7 +1053,12 @@ def run_monte_carlo_batch(
 
             solved = False
             last_failure_reason = ""
+            if not ev_precheck_passed:
+                last_failure_reason = ev_precheck_reason
+                failure_counter[last_failure_reason] += 1
             for cap_kw in cap_candidates:
+                if not ev_precheck_passed:
+                    break
                 params = {
                     "R1": float(d_input["meta"][r_col]),
                     "C1": float(d_input["meta"][c_col]),
