@@ -2028,6 +2028,22 @@ def _dwelling_sort_key(dwelling_id: str) -> tuple[int, Any]:
     return (1, dwelling_id)
 
 
+def _infer_time_step_hours(times: pd.Series | Sequence[Any], default_hours: float = 0.5) -> float:
+    """Infer cache timestep length in hours from timestamp samples."""
+    parsed = pd.to_datetime(pd.Series(times), errors="coerce").dropna()
+    if parsed.empty:
+        return float(default_hours)
+
+    unique_times = pd.DatetimeIndex(sorted(pd.unique(parsed)))
+    if len(unique_times) <= 1:
+        return float(default_hours)
+
+    dt_hours = float(pd.Series(unique_times).diff().dropna().dt.total_seconds().median() / 3600.0)
+    if not np.isfinite(dt_hours) or dt_hours <= 0.0:
+        return float(default_hours)
+    return dt_hours
+
+
 def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
     """Load one case cache directory into dense arrays for fast MC mixing."""
     files = sorted(case_dir.glob("dwelling_*_runs_breakdown.csv"))
@@ -2041,6 +2057,7 @@ def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
     boiler_by_dwelling: dict[str, np.ndarray] = {}
     n_runs_ref: int | None = None
     n_steps_ref: int | None = None
+    dt_hours_ref: float | None = None
 
     for path in files:
         match = re.match(r"^dwelling_(.+)_runs_breakdown\.csv$", path.name)
@@ -2080,6 +2097,14 @@ def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
                 f"Step count mismatch in {path}: expected {n_steps_ref}, got {n_steps}"
             )
 
+        dt_hours = _infer_time_step_hours(df["time"])
+        if dt_hours_ref is None:
+            dt_hours_ref = dt_hours
+        elif not np.isclose(dt_hours_ref, dt_hours, rtol=0.0, atol=1e-9):
+            raise ValueError(
+                f"Timestep mismatch in {path}: expected {dt_hours_ref}h, got {dt_hours}h"
+            )
+
         df = df.sort_values(["run", "time"], kind="mergesort")
         hp = pd.to_numeric(df["hp_elec_kw"], errors="coerce").fillna(0.0).to_numpy()
         app = pd.to_numeric(df["appliance_kw"], errors="coerce").fillna(0.0).to_numpy()
@@ -2100,6 +2125,8 @@ def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"No valid dwelling cache files parsed in {case_dir}")
     if n_runs_ref is None or n_steps_ref is None:
         raise ValueError(f"Unable to infer run/step dimensions from {case_dir}")
+    if dt_hours_ref is None:
+        dt_hours_ref = 0.5
 
     return {
         "base_by_dwelling": base_by_dwelling,
@@ -2109,6 +2136,7 @@ def _load_case_breakdown_cache(case_dir: Path) -> dict[str, Any]:
         "boiler_by_dwelling": boiler_by_dwelling,
         "n_runs": int(n_runs_ref),
         "n_steps": int(n_steps_ref),
+        "dt_hours": float(dt_hours_ref),
     }
 
 
@@ -2539,6 +2567,175 @@ def run_hhp_mhp_boiler_penetration_experiment_from_cache(
                 "max_demand_p95_kw": float(np.percentile(peaks, 95)),
                 "max_demand_max_kw": float(np.max(peaks)),
                 "max_demand_min_kw": float(np.min(peaks)),
+            }
+        )
+        if pbar is not None:
+            pbar.update(1)
+            pbar.set_postfix({"HHP%": round(hhp_frac * 100, 1), "MHP%": round(mhp_frac * 100, 1)}, refresh=False)
+            pbar.refresh()
+
+    if pbar is not None:
+        pbar.close()
+
+    result_df = pd.DataFrame(results).sort_values(["hhp_percentage", "mhp_percentage"]).reset_index(drop=True)
+    if save_path is not None:
+        out_path = Path(save_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        result_df.to_csv(out_path, index=False)
+    return result_df
+
+
+def run_hhp_mhp_boiler_gas_experiment_from_cache(
+    *,
+    cache_root: str | Path | None = None,
+    hybrid_cache_dir: str | Path | None = None,
+    boiler_cache_dir: str | Path | None = None,
+    ev_penetration: float = 0.0,
+    hhp_percentages: Sequence[float],
+    mhp_percentages: Sequence[float],
+    mc_runs_per_pixel: int = 100,
+    random_seed: int = 42,
+    save_path: str | Path | None = None,
+    co2_kg_per_kwh: float = 0.183,
+    show_progress: bool = True,
+) -> pd.DataFrame:
+    """Run cache MC for fixed-EV HHP/MHP/boiler mixes using annual gas as the metric.
+
+    Only hybrid and boiler-only caches are required because monovalent homes are
+    assumed to contribute zero boiler gas. Pixels are defined by (HHP share, MHP
+    share), with any remaining share assigned to boiler-only homes.
+    """
+    if hybrid_cache_dir is None or boiler_cache_dir is None:
+        if cache_root is None:
+            raise ValueError("Provide cache_root or both hybrid_cache_dir and boiler_cache_dir.")
+        cache_root = Path(cache_root)
+        hybrid_cache_dir = cache_root / "hybrid"
+        boiler_cache_dir = cache_root / "boiler_only"
+
+    hybrid_cache = _load_case_breakdown_cache(Path(hybrid_cache_dir))
+    boiler_cache = _load_case_breakdown_cache(Path(boiler_cache_dir))
+
+    hybrid_ids = set(hybrid_cache["boiler_by_dwelling"].keys())
+    boiler_ids = set(boiler_cache["boiler_by_dwelling"].keys())
+    common_ids = sorted(hybrid_ids & boiler_ids, key=_dwelling_sort_key)
+    if not common_ids:
+        raise ValueError("No common dwelling IDs across hybrid and boiler-only cache folders.")
+
+    n_runs_h = int(hybrid_cache["n_runs"])
+    n_runs_b = int(boiler_cache["n_runs"])
+    dt_hours_h = float(hybrid_cache["dt_hours"])
+    dt_hours_b = float(boiler_cache["dt_hours"])
+    if not np.isclose(dt_hours_h, dt_hours_b, rtol=0.0, atol=1e-9):
+        raise ValueError(f"Timestep mismatch: hybrid={dt_hours_h}h, boiler_only={dt_hours_b}h")
+
+    hybrid_gas = np.stack([hybrid_cache["boiler_by_dwelling"][d] for d in common_ids], axis=0)
+    boiler_gas = np.stack([boiler_cache["boiler_by_dwelling"][d] for d in common_ids], axis=0)
+    hybrid_total_gas_kwh = hybrid_gas.sum(axis=2, dtype=np.float64) * dt_hours_h
+    boiler_total_gas_kwh = boiler_gas.sum(axis=2, dtype=np.float64) * dt_hours_h
+
+    n_dwellings = len(common_ids)
+    ev_frac = _normalize_penetration_values([ev_penetration])[0]
+    hhp_fracs = _normalize_penetration_values(hhp_percentages)
+    mhp_fracs = _normalize_penetration_values(mhp_percentages)
+    mc_runs_per_pixel = int(mc_runs_per_pixel)
+    if mc_runs_per_pixel <= 0:
+        raise ValueError("mc_runs_per_pixel must be > 0")
+    co2_kg_per_kwh = float(co2_kg_per_kwh)
+    if not np.isfinite(co2_kg_per_kwh) or co2_kg_per_kwh < 0.0:
+        raise ValueError("co2_kg_per_kwh must be a finite non-negative value.")
+
+    rng = np.random.default_rng(int(random_seed))
+
+    pixels: list[tuple[float, float]] = [
+        (float(hhp_frac), float(mhp_frac))
+        for hhp_frac in hhp_fracs
+        for mhp_frac in mhp_fracs
+        if float(hhp_frac) + float(mhp_frac) <= 1.0 + 1e-9
+    ]
+    if not pixels:
+        raise ValueError("No valid pixels available: require HHP + MHP <= 100%.")
+
+    results: list[dict[str, Any]] = []
+    pbar = None
+    if show_progress:
+        pbar = tqdm(total=len(pixels), desc="Penetration pixels (4b gas)", dynamic_ncols=True, leave=True, mininterval=0.1)
+        pbar.refresh()
+
+    all_idx = np.arange(n_dwellings, dtype=int)
+    for hhp_frac, mhp_frac in pixels:
+        n_hhp = int(round(hhp_frac * n_dwellings))
+        n_mhp = int(round(mhp_frac * n_dwellings))
+        n_ev = int(round(ev_frac * n_dwellings))
+        n_hhp = min(max(n_hhp, 0), n_dwellings)
+        n_mhp = min(max(n_mhp, 0), n_dwellings)
+        n_ev = min(max(n_ev, 0), n_dwellings)
+
+        if n_hhp + n_mhp > n_dwellings:
+            overflow = n_hhp + n_mhp - n_dwellings
+            reduce_mhp = min(overflow, n_mhp)
+            n_mhp -= reduce_mhp
+            overflow -= reduce_mhp
+            if overflow > 0:
+                n_hhp -= min(overflow, n_hhp)
+
+        n_boiler = n_dwellings - n_hhp - n_mhp
+        total_gas_samples = np.zeros(mc_runs_per_pixel, dtype=np.float64)
+
+        for i in range(mc_runs_per_pixel):
+            hhp_idx = (
+                rng.choice(n_dwellings, size=n_hhp, replace=False)
+                if n_hhp > 0
+                else np.array([], dtype=int)
+            )
+            non_hhp_idx = np.setdiff1d(all_idx, hhp_idx, assume_unique=True)
+            mhp_idx = (
+                rng.choice(non_hhp_idx, size=n_mhp, replace=False)
+                if n_mhp > 0
+                else np.array([], dtype=int)
+            )
+            boiler_idx = np.setdiff1d(non_hhp_idx, mhp_idx, assume_unique=True)
+
+            total_gas_kwh = 0.0
+            if hhp_idx.size:
+                run_idx_h = rng.integers(0, n_runs_h, size=hhp_idx.size)
+                total_gas_kwh += float(hybrid_total_gas_kwh[hhp_idx, run_idx_h].sum(dtype=np.float64))
+
+            if boiler_idx.size:
+                run_idx_b = rng.integers(0, n_runs_b, size=boiler_idx.size)
+                total_gas_kwh += float(boiler_total_gas_kwh[boiler_idx, run_idx_b].sum(dtype=np.float64))
+
+            total_gas_samples[i] = total_gas_kwh
+
+        total_co2_samples = total_gas_samples * co2_kg_per_kwh
+        results.append(
+            {
+                "ev_penetration": ev_frac,
+                "hhp_percentage": hhp_frac,
+                "mhp_percentage": mhp_frac,
+                "boiler_percentage": float(max(0.0, 1.0 - hhp_frac - mhp_frac)),
+                "valid_mix": True,
+                "n_dwellings": n_dwellings,
+                "n_ev_homes": n_ev,
+                "n_hhp_homes": n_hhp,
+                "n_mhp_homes": n_mhp,
+                "n_boiler_homes": n_boiler,
+                "mc_runs_per_pixel": mc_runs_per_pixel,
+                "dt_hours": float(dt_hours_h),
+                "co2_kg_per_kwh": co2_kg_per_kwh,
+                "annual_gas_mean_kwh": float(np.mean(total_gas_samples)),
+                "annual_gas_std_kwh": float(np.std(total_gas_samples, ddof=0)),
+                "annual_gas_p50_kwh": float(np.percentile(total_gas_samples, 50)),
+                "annual_gas_p90_kwh": float(np.percentile(total_gas_samples, 90)),
+                "annual_gas_p95_kwh": float(np.percentile(total_gas_samples, 95)),
+                "annual_gas_max_kwh": float(np.max(total_gas_samples)),
+                "annual_gas_min_kwh": float(np.min(total_gas_samples)),
+                "annual_co2_mean_kg": float(np.mean(total_co2_samples)),
+                "annual_co2_std_kg": float(np.std(total_co2_samples, ddof=0)),
+                "annual_co2_p50_kg": float(np.percentile(total_co2_samples, 50)),
+                "annual_co2_p90_kg": float(np.percentile(total_co2_samples, 90)),
+                "annual_co2_p95_kg": float(np.percentile(total_co2_samples, 95)),
+                "annual_co2_max_kg": float(np.max(total_co2_samples)),
+                "annual_co2_min_kg": float(np.min(total_co2_samples)),
             }
         )
         if pbar is not None:

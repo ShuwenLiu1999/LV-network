@@ -10,6 +10,7 @@ This file captures the reviewed assumptions and experiment definitions for the b
 - Comfort bounds are hard constraints:
   - if setpoint >= 19 degC: both lower and upper bounds are enforced (`T_set +/- tol`).
   - if setpoint < 19 degC: lower bound is fixed at 15 degC; no upper bound is enforced.
+  - optional relaxation: setting `enforce_upper_comfort_bound = False` removes the upper indoor-temperature bound while keeping the lower bound active.
 - Space-heating and DHW outputs share device capacity each timestep:
   - `Q_hp_space + Q_hp_hw <= Qhp_max`
   - `Q_bo_space + Q_bo_hw <= Qbo_max`
@@ -73,9 +74,13 @@ This file captures the reviewed assumptions and experiment definitions for the b
   - Repeats the replicate process to report mean and 95% CI for energy cost, and mean/95% CI plus extreme value for peak demand, alongside comparison plots.
 - Experiment 6b (single-dwelling gas convergence from all-year cache):
   - Reads one dwelling breakdown file and computes per-run total gas, then running-mean convergence by run index.
-- Experiment 6c (HHP vs pure-boiler annual gas comparison from all-year cache):
-  - Uses `hybrid` and `boiler_only` case folders and computes annualized gas consumption per run from `boiler_gas_kw`.
+- Experiment 6c (HHP vs pure-boiler period gas comparison from cached breakdowns):
+  - Runs a feasibility pre-check before aggregation and exports a run-feasibility matrix (`rows=run IDs`, `columns=dwelling+case`) using `solve_status` (`optimal` = feasible).
+  - Uses `hybrid` and `boiler_only` case folders and computes dataset-period aggregate gas per run (no annualization).
   - Limits the analysis to the first `N` run IDs per dwelling file (`exp6c_max_runs_per_dwelling`, default `5`; `None` uses all runs).
+  - Splits boiler gas into space-heating and hot-water components using the per-step boiler thermal split (`Q_bo_space_w`, `Q_bo_hw_w`) as allocation shares on `boiler_gas_kw`.
+  - Aggregates run-level period gas to dwelling-level mean period-gas metrics (total + space + hot-water) before case comparison.
+  - Visual comparison is histogram-based per case with separate distributions for space-heating gas and hot-water gas.
 
 ## Diagnostic Notebook Summary
 - `Codes/Diagnose_HHP_Infeasibility.ipynb`:

@@ -27,7 +27,7 @@ This document is the working map of the project structure, model responsibilitie
 
 | Module | What it does | Main inputs | Main outputs | Used by |
 |---|---|---|---|---|
-| `Codes/sourcecode/RC_Optimization.py` | Solves thermal-energy dispatch optimization with Gurobi. Supports hybrid/monovalent heating logic, hot-water modes, EV charging constraints, and day-ahead/full-horizon solve. Builds tariffs for `flat`, `cozy`, and `agile` (Agile electricity from CSV + constant gas price). | Building RC params (`R1,C1,g`), tariff, weather (`Tout,S`), comfort setpoints/tolerance, device capacities, EV and HW settings | Per-step optimal schedules (`Q_hp_space`, `Q_bo_space`, `Q_hp_hw`, `Q_bo_hw`, `P_ev_charge`, temperatures, storage states) and objective costs | `FullEnergyOptimizationDemo11.ipynb`, `stochastic_baseload_multiple_building_simulation_and_aggregation.py`, demand generation scripts |
+| `Codes/sourcecode/RC_Optimization.py` | Solves thermal-energy dispatch optimization with Gurobi. Supports hybrid/monovalent heating logic, hot-water modes, EV charging constraints, and day-ahead/full-horizon solve. Builds tariffs for `flat`, `cozy`, and `agile` (Agile electricity from CSV + constant gas price), and allows optional removal of the upper indoor-temperature comfort bound for heating-only studies. | Building RC params (`R1,C1,g`), tariff, weather (`Tout,S`), comfort setpoints/tolerance, device capacities, EV and HW settings | Per-step optimal schedules (`Q_hp_space`, `Q_bo_space`, `Q_hp_hw`, `Q_bo_hw`, `P_ev_charge`, temperatures, storage states) and objective costs | `FullEnergyOptimizationDemo11.ipynb`, `stochastic_baseload_multiple_building_simulation_and_aggregation.py`, demand generation scripts |
 | `Codes/sourcecode/stochastic_baseload_multiple_building_simulation_and_aggregation.py` | Orchestrates end-to-end stochastic simulation workflow for many dwellings. Handles profile sampling by occupancy, EV travel synthesis, Monte Carlo runs, run aggregation, summary plots, EV-power sweep experiments, per-dwelling breakdown export, and cache-based penetration studies. Supports optional on-the-fly homogeneous EV profile generation to replace cached EV components, explicit per-pixel tqdm progress updates, randomized-tariff-offset MC workflows (`hybrid`/`monovalent`/`boiler_only`), and fixed-EV penetration sweeps over mixed `HHP`/`MHP`/`boiler` shares using three cache folders (`hybrid`/`monovalent`/`boiler_only`) with electricity-only peak-demand aggregation in Experiment 4a. | Metadata CSV, weather CSV, stochastic demand profiles, configuration dictionaries (`optim_params_cfg`, `ev_params_cfg`, `hw_params_cfg`), cached single-dwelling breakdown folders (`hybrid`/`monovalent`/`boiler_only`), optional EV-generation parameter dictionary | Monte Carlo result dicts, run CSVs (optional), aggregated curves, summary tables, per-dwelling breakdown CSV, penetration-grid maximum-demand summary table, contour-plot-ready surface table | `Codes/FullEnergyOptimizationDemo11.ipynb` |
 
 ### Network simulation and aggregation
@@ -53,7 +53,7 @@ This document is the working map of the project structure, model responsibilitie
 |---|---|
 | `Codes/FullEnergyOptimizationDemo11.ipynb` | Primary experiment notebook: workflow setup, MC runs, MHP/HHP sweeps, single/all-dwelling breakdown runs, convergence analytics, cache-based EV-penetration x HHP-share maximum-demand sweep, fixed-EV penetration x (`HHP`,`MHP`,`boiler`) share sweep (with `HHP+MHP<=100%`), randomized cozy-tariff offset scans across hybrid/monovalent/boiler-only cases, and post-scan energy-cost component summarization from randomized-offset breakdown outputs (HP/EV/baseload electricity + gas) with case-wise component-cost vs peak-demand plots. |
 | `Codes/simulation.ipynb` | Simulation-only notebook split from `FullEnergyOptimizationDemo11.ipynb`: setup/context build, baseline MC execution, Experiment 1/2 run generation, and a unified Experiment 6 runner that covers both randomized-offset scans and Experiment 3-equivalent single-case runs (including `flat`/`cozy`/`agile` tariffs). Exports run-manifest CSV artifacts and avoids plotting/post-processing cells. |
-| `Codes/analysis.ipynb` | Analysis-only notebook split from `FullEnergyOptimizationDemo11.ipynb`: file-driven follow-up calculations/visualization with per-section dataset-selection cells placed immediately before each analysis block. Runs in ordered workflow (baseline, Exp1, Exp2, Exp3a, Exp4-family generation, Exp4-pre, Exp4, Exp4a, Exp5, Exp6a, Exp6b, Exp6c), including Exp4-family cache-based generation (pre-check + Exp4 + Exp4a) from existing run outputs and all-year gas-consumption post-analysis for HHP vs pure boiler. |
+| `Codes/analysis.ipynb` | Analysis-only notebook split from `FullEnergyOptimizationDemo11.ipynb`: file-driven follow-up calculations/visualization with per-section dataset-selection cells placed immediately before each analysis block. Runs in ordered workflow (baseline, Exp1, Exp2, Exp3a, Exp4-family generation, Exp4-pre, Exp4, Exp4a, Exp5, Exp6a, Exp6b, Exp6c), including Exp4-family cache-based generation (pre-check + Exp4 + Exp4a) from existing run outputs and gas-consumption post-analysis for HHP vs pure boiler with run-feasibility pre-check and dwelling-average component histograms. |
 | `Codes/Diagnose_HHP_Infeasibility.ipynb` | Replays infeasible cached Experiment 6 `(dwelling, run)` cases and applies A/B relaxation tests (EV targets vs thermal constraints), plus capacity-limit relaxations (EV charge-cap lift and monovalent HP-cap lift), to classify likely infeasibility drivers and export diagnosis summaries including selected feasible HP capacities. |
 | `Codes/Generate_Occupancy_based_demand_with_CREST_model.ipynb` | Demand profile generation and occupancy-linked preprocessing. |
 | `Codes/Data Preprocessing.ipynb` | Data cleaning/transformation utilities. |
@@ -78,9 +78,11 @@ This document is the working map of the project structure, model responsibilitie
   - `Output Data/plots/exp6a_scenario_<scenario>_cases_<casegroup>_tariff_<tarifffilter>_plot_total_cost_vs_peak_mean.png` (mean-peak CI crosshair with overlaid dotted extreme-peak boundary line)
 - Experiment 6b single-dwelling gas-convergence CSV: `Output Data/Single Dwelling Runs/all-year/<case>/exp6b_single_dwelling_gas_convergence.csv`
 - Experiment 6b single-dwelling gas-convergence plot: `Output Data/plots/exp6b_single_dwelling_gas_convergence.png`
-- Experiment 6c annual gas per-run detail: `Output Data/Single Dwelling Runs/all-year/exp6c_annual_gas_per_run.csv`
-- Experiment 6c annual gas summary (HHP vs pure boiler): `Output Data/Single Dwelling Runs/all-year/exp6c_annual_gas_summary.csv`
-- Experiment 6c annual gas comparison plot: `Output Data/Single Dwelling Runs/all-year/exp6c_annual_gas_hhp_vs_boiler.png`
+- Experiment 6c period gas per-run detail (total + space + hot-water): `Output Data/Single Dwelling Runs/<dataset_dir>/exp6c_period_gas_per_run.csv`
+- Experiment 6c period gas dwelling-average table (total + space + hot-water): `Output Data/Single Dwelling Runs/<dataset_dir>/exp6c_period_gas_dwelling_average.csv`
+- Experiment 6c period gas summary (HHP vs pure boiler, total + space + hot-water): `Output Data/Single Dwelling Runs/<dataset_dir>/exp6c_period_gas_summary.csv`
+- Experiment 6c period gas histogram plot by component (HHP vs pure boiler): `Output Data/Single Dwelling Runs/<dataset_dir>/exp6c_period_gas_hhp_vs_boiler_hist.png`
+- Experiment 6c run-feasibility pre-check matrix (`rows=runs`, `cols=dwelling+case`): `Output Data/Single Dwelling Runs/all-year/exp6c_run_feasibility_matrix.csv`
 - Experiment 6 per-folder monovalent HP-capacity summary: `Output Data/Single Dwelling Runs/randomized offset/<tariff>_monovalent_EV_<kW>kW_offset<X>h/dwelling_monovalent_hp_capacity_summary.csv` (one row per dwelling with max selected HP capacity across MC runs)
 - Diagnosis A/B per-pair summary: `Output Data/Single Dwelling Runs/randomized offset/<case>/diagnosis_ab_test_summary.csv` (includes `*_hp_capacity_kw` columns for replayed scenarios)
 - Diagnosis capacity-relaxation status summary: `Output Data/Single Dwelling Runs/randomized offset/<case>/diagnosis_capacity_relaxation_summary.csv`
@@ -123,6 +125,17 @@ This document is the working map of the project structure, model responsibilitie
 - Keep comments practical and minimal: explain intent and usage, not obvious syntax.
 
 ## 6) Structure change log
+
+- `2026-04-21`:
+  - Added optimizer flag `enforce_upper_comfort_bound` in `Codes/sourcecode/RC_Optimization.py` so the upper indoor-temperature comfort bound can be disabled while preserving the lower bound.
+  - Exposed `enforce_upper_comfort_bound` in `Codes/simulation.ipynb` through `optim_params_cfg` for notebook-level control during simulation runs.
+
+- `2026-04-20`:
+  - Updated Experiment 6c in `analysis.ipynb` to compute annual gas statistics at dwelling level first (mean annual gas per dwelling over selected runs), then compare `hybrid` vs `boiler_only` using case histograms.
+  - Added Experiment 6c dwelling-average CSV output (`exp6c_annual_gas_dwelling_average.csv`) and renamed the Exp 6c figure output to `exp6c_annual_gas_hhp_vs_boiler_hist.png`.
+  - Added an Experiment 6c pre-check cell in `analysis.ipynb` to scan all selected case/dwelling breakdown files and export a run-feasibility matrix CSV (`exp6c_run_feasibility_matrix.csv`) with rows as run IDs and columns as dwelling+case identifiers.
+  - Standardized Experiment 6c feasibility-matrix column names to `<dwelling_id_3digits>_<case>` (for example `001_hybrid`, `001_boiler_only`).
+  - Updated Experiment 6c gas metric from annualized values to dataset-period aggregate values and split gas into space-heating and hot-water components (using `Q_bo_space_w`/`Q_bo_hw_w` shares of `boiler_gas_kw` per step), with updated period-output filenames.
 
 - `2026-04-17`:
   - Added `Codes/simulation.ipynb` and `Codes/analysis.ipynb` as an explicit workflow split of `Codes/FullEnergyOptimizationDemo11.ipynb`.

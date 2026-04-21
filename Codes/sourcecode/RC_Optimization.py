@@ -7,6 +7,23 @@ import os
 from pathlib import Path
 
 
+def _build_comfort_bounds(
+    T_set_sub: np.ndarray,
+    tol_sub: float | np.ndarray,
+    *,
+    enforce_upper_comfort_bound: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Build lower/upper indoor-temperature bounds from setpoints and tolerance."""
+    T = len(T_set_sub)
+    tol_arr = tol_sub if np.ndim(tol_sub) > 0 else np.full(T, tol_sub)
+    T_low = np.where(T_set_sub >= 19.0, T_set_sub - tol_arr, 15.0)
+    if enforce_upper_comfort_bound:
+        T_high = np.where(T_set_sub >= 19.0, T_set_sub + tol_arr, np.nan)
+    else:
+        T_high = np.full(T, np.nan)
+    return T_low, T_high
+
+
 def optimize_hhp_operation(
     R1: float,
     C1: float,
@@ -22,7 +39,8 @@ def optimize_hhp_operation(
     etaB: float,
     Qhp_max: float,
     Qbo_max: float,
-    day_ahead: bool = False
+    day_ahead: bool = False,
+    enforce_upper_comfort_bound: bool = True,
 ) -> pd.DataFrame:
     """
     Hybrid-HP dispatch with comfort constraints.
@@ -37,10 +55,12 @@ def optimize_hhp_operation(
                          T0_sub, T_set_sub, tol_sub,
                          COP, etaB, Qhp_max, Qbo_max):
         T = len(tariff_sub)
-        # comfort bounds
-        tol_arr = tol_sub if np.ndim(tol_sub) > 0 else np.full(T, tol_sub)
-        T_low = np.where(T_set_sub >= 19.0, T_set_sub - tol_arr, 15.0)
-        T_high = np.where(T_set_sub >= 19.0, T_set_sub + tol_arr, np.nan)
+        # Build lower/upper comfort bounds once for this subproblem.
+        T_low, T_high = _build_comfort_bounds(
+            np.asarray(T_set_sub),
+            tol_sub,
+            enforce_upper_comfort_bound=bool(enforce_upper_comfort_bound),
+        )
 
         beta = dt * R1 / (C1 * R1 + dt)
         m = gp.Model()
@@ -164,6 +184,7 @@ def optimize_full_energy_system(
     ev_retention: float = 1.0,
     ev_min_final_fraction: float = 0.8,
     day_ahead: bool = False,
+    enforce_upper_comfort_bound: bool = True,
 ) -> dict:
     """
     Solve the full optimization problem including hot water demand, EV charging,
@@ -186,6 +207,10 @@ def optimize_full_energy_system(
         sequences. Each entry must match ``len(tariff)``.
     tol : float | np.ndarray
         Comfort tolerance (scalar or array matching the horizon).
+    enforce_upper_comfort_bound : bool, default True
+        If False, only the lower indoor-temperature comfort bound is enforced.
+        This is useful for full-year heating-only studies where summer
+        overheating should not make the optimization infeasible.
     COP : float
         Heat pump coefficient of performance.
     etaB : float
@@ -288,9 +313,11 @@ def optimize_full_energy_system(
     ):
         T = len(tariff_sub)
         dt_hours = dt / 3600.0
-        tol_arr = tol_sub if np.ndim(tol_sub) > 0 else np.full(T, tol_sub)
-        T_low = np.where(T_set_sub >= 19.0, T_set_sub - tol_arr, 15.0)
-        T_high = np.where(T_set_sub >= 19.0, T_set_sub + tol_arr, np.nan)
+        T_low, T_high = _build_comfort_bounds(
+            np.asarray(T_set_sub),
+            tol_sub,
+            enforce_upper_comfort_bound=bool(enforce_upper_comfort_bound),
+        )
 
         hw_profile = hw_profile_sub if hw_profile_sub is not None else np.zeros(T)
         delta_T_hw = T_hw_supply - T_mains
