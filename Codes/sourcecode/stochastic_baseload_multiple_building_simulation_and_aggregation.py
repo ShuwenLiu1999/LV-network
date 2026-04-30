@@ -1135,6 +1135,17 @@ def run_monte_carlo_batch(
                 run_elec_cols[f"dwelling_{dwelling_id}"] = (heat_pump_elec + other_elec + ev_elec).to_numpy()
                 run_gas_cols[f"dwelling_{dwelling_id}"] = gas_input.to_numpy()
                 if single_dwelling_output_path is not None:
+                    if "T_tank" in best.columns:
+                        storage_temp_C = np.asarray(best["T_tank"], dtype=float)
+                    elif "T_stor" in best.columns:
+                        storage_temp_C = np.asarray(best["T_stor"], dtype=float)
+                    else:
+                        storage_temp_C = np.full(n_steps, np.nan)
+                    storage_volume_m3 = (
+                        np.asarray(best["V_stor"], dtype=float)
+                        if "V_stor" in best.columns
+                        else np.full(n_steps, np.nan)
+                    )
                     single_dwelling_rows.append(
                         pd.DataFrame(
                             {
@@ -1149,7 +1160,8 @@ def run_monte_carlo_batch(
                                 "tariff_gas_price": np.asarray(tariff_for_opt["gas_price"], dtype=float),
                                 "tariff_offset_steps": np.asarray(offset_steps_per_timestep, dtype=int),
                                 "Tin_C": np.asarray(best["Tin"], dtype=float),
-                                "T_tank_C": np.asarray(best["T_tank"], dtype=float) if "T_tank" in best.columns else np.full(n_steps, np.nan),
+                                "T_tank_C": storage_temp_C,
+                                "V_stor_m3": storage_volume_m3,
                                 "Q_hp_space_w": np.asarray(best["Q_hp_space"], dtype=float),
                                 "Q_bo_space_w": np.asarray(best["Q_bo_space"], dtype=float),
                                 "Q_hp_hw_w": np.asarray(best["Q_hp_hw"], dtype=float),
@@ -1190,6 +1202,7 @@ def run_monte_carlo_batch(
                                 "tariff_offset_steps": np.asarray(offset_steps_per_timestep, dtype=int),
                                 "Tin_C": np.full(n_steps, np.nan),
                                 "T_tank_C": np.full(n_steps, np.nan),
+                                "V_stor_m3": np.full(n_steps, np.nan),
                                 "Q_hp_space_w": np.full(n_steps, np.nan),
                                 "Q_bo_space_w": np.full(n_steps, np.nan),
                                 "Q_hp_hw_w": np.full(n_steps, np.nan),
