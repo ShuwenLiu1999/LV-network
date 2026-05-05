@@ -1,201 +1,201 @@
-run,peak_electricity_kw,source,cumulative_avg_peak_kw
-1,775.0511695807606,existing_csv,775.0511695807606
-2,803.753606406608,existing_csv,789.4023879936843
-3,774.6402118000905,existing_csv,784.4816625958197
-4,777.4159588940071,existing_csv,782.7152366703665
-5,770.033158261844,existing_csv,780.178820988662
-6,818.6493807359246,existing_csv,786.590580946539
-7,797.127347619047,existing_csv,788.095833328326
-8,811.9766426416957,existing_csv,791.0809344924971
-9,761.2042589370266,existing_csv,787.7613038752227
-10,769.5968086847664,existing_csv,785.9448543561771
-11,811.2625285714283,existing_csv,788.2464611030181
-12,791.6763684928524,existing_csv,788.5322867188376
-13,813.0655060040792,existing_csv,790.4194574330869
-14,793.7063428571431,existing_csv,790.6542349633767
-15,781.9080054525366,existing_csv,790.0711529959874
-16,807.1813733282746,existing_csv,791.1405417667553
-17,825.0680698642005,existing_csv,793.1362787136638
-18,768.6929663912456,existing_csv,791.7783169179739
-19,760.2805460599267,existing_csv,790.1205395043925
-20,790.8268590420236,existing_csv,790.155855481274
-21,806.6174174899926,existing_csv,790.9397393864512
-22,775.8530444090486,existing_csv,790.253980523842
-23,776.3958433717704,existing_csv,789.6514528215779
-24,781.9545690329613,existing_csv,789.3307493303855
-25,786.5086825279026,existing_csv,789.2178666582862
-26,817.4288031498555,existing_csv,790.3029026771928
-27,790.3374780702986,existing_csv,790.3041832473078
-28,783.6548095238094,existing_csv,790.0667056143258
-29,808.6504285714291,existing_csv,790.7075236473293
-30,791.9376494782387,existing_csv,790.748527841693
-31,777.5202380952381,existing_csv,790.3218088176137
-32,783.1306768787879,existing_csv,790.0970859445255
-33,794.3479447707019,existing_csv,790.225899848349
-34,769.3404219057813,existing_csv,789.6116210853322
-35,769.9759021110925,existing_csv,789.0506005432112
-36,817.5343547767739,existing_csv,789.8418159385878
-37,772.7680956060286,existing_csv,789.3803640377079
-38,802.5951163367132,existing_csv,789.7281206771554
-39,794.878975290202,existing_csv,789.8601938723617
-40,773.3216590301706,existing_csv,789.446730501307
-41,828.0130762676412,existing_csv,790.3873730809737
-42,775.4538332675533,existing_csv,790.0318126092255
-43,813.0921912703359,existing_csv,790.5681004850652
-44,789.0054640099819,existing_csv,790.5325860197225
-45,810.6453982037767,existing_csv,790.9795374015904
-46,800.8609388955663,existing_csv,791.1943504775464
-47,763.9662897766449,existing_csv,790.6150300371017
-48,777.1527949373922,existing_csv,790.3345668058578
-49,795.050862178926,existing_csv,790.4308177318386
-50,792.5049278065148,existing_csv,790.4722999333322
-51,778.5104518052642,existing_csv,790.2377538916054
-52,762.016692543388,existing_csv,789.6950411733704
-53,797.1353540051441,existing_csv,789.8354244343473
-54,787.4791218245566,existing_csv,789.7917892008327
-55,773.949892098807,existing_csv,789.5037547080685
-56,818.0246221127308,existing_csv,790.0130559117232
-57,780.3252796212173,existing_csv,789.8430949241705
-58,799.7490573304408,existing_csv,790.013887379451
-59,794.2922355517413,existing_csv,790.0864017552525
-60,776.2300228557394,existing_csv,789.8554621069273
-61,773.3592431164107,existing_csv,789.5850322874106
-62,824.8822857142861,existing_csv,790.1543428265538
-63,818.5960117351351,existing_csv,790.6057978885948
-64,797.0678614768974,existing_csv,790.706767632162
-65,783.722123144395,existing_csv,790.5993115631194
-66,769.3311721660607,existing_csv,790.2770670268004
-67,800.0095058555682,existing_csv,790.4223273078268
-68,782.8085543918775,existing_csv,790.3103600590629
-69,784.12263585335,existing_csv,790.2206828966612
-70,772.3846266554812,existing_csv,789.9658820932158
-71,824.5753459183644,existing_csv,790.4533393301897
-72,764.8522312038702,existing_csv,790.0977683839908
-73,805.5501482448055,existing_csv,790.3094448204403
-74,790.4401275431748,existing_csv,790.31121080318
-75,785.4607881443615,existing_csv,790.2465385010624
-76,790.4251130210648,existing_csv,790.2488881657993
-77,772.0522347362147,existing_csv,790.012567991389
-78,788.8372059007071,existing_csv,789.9974992466367
-79,782.7459011656041,existing_csv,789.9057068658641
-80,782.3905998724911,existing_csv,789.811768028447
-81,798.6608383201753,existing_csv,789.9210158098264
-82,794.6783688419206,existing_csv,789.9790323102178
-83,793.4220764919402,existing_csv,790.0205147702385
-84,761.3818716660033,existing_csv,789.6795785428072
-85,787.4216,existing_csv,789.6530140893623
-86,775.4465595681633,existing_csv,789.4878227577206
-87,787.273720759793,existing_csv,789.4623733094685
-88,826.4768056616829,existing_csv,789.8829918589254
-89,774.4516524722512,existing_csv,789.7096060231202
-90,801.112461904762,existing_csv,789.836304421805
-91,816.6288580149991,existing_csv,790.1307280876644
-92,793.7801086041665,existing_csv,790.1703952671916
-93,783.989422561015,existing_csv,790.103933195082
-94,815.3668245161616,existing_csv,790.3726873580723
-95,787.6716141412692,existing_csv,790.3442550084217
-96,789.4303719209121,existing_csv,790.3347353929267
-97,787.3454314861222,existing_csv,790.3039178268773
-98,783.9144897038365,existing_csv,790.2387195807238
-99,786.7792311157158,existing_csv,790.2037752527945
-100,814.4500780702983,existing_csv,790.4462382809695
-101,771.5551380952384,existing_csv,790.2591976850712
-102,795.5758815500524,existing_csv,790.3113220366886
-103,779.7033376708442,existing_csv,790.2083318972144
-104,811.0193675596089,existing_csv,790.4084380093528
-105,791.31656810972,existing_csv,790.4170868674515
-106,819.5403187753625,existing_csv,790.691834338281
-107,789.6188485976584,existing_csv,790.6818064341629
-108,789.4697940780027,existing_csv,790.6705840975318
-109,809.9175285714284,existing_csv,790.8471615697695
-110,790.3800006260584,existing_csv,790.8429146520994
-111,799.8073022812414,existing_csv,790.9236749010106
-112,815.4855333333333,existing_csv,791.142977208442
-113,790.5870380952384,existing_csv,791.1380573932809
-114,809.4477265978542,existing_csv,791.2986685266543
-115,754.7938492200684,existing_csv,790.9812353152927
-116,804.0646936903777,existing_csv,791.0940237495607
-117,794.2213741924555,existing_csv,791.1207532405256
-118,790.9825335052479,existing_csv,791.1195818868367
-119,797.9188523809526,existing_csv,791.1767186136781
-120,784.0258190476192,existing_csv,791.1171277839609
-121,798.7085658254967,existing_csv,791.179866941329
-122,804.3133545334714,existing_csv,791.2875184789694
-123,791.9125589920357,existing_csv,791.2926001091571
-124,791.6221948793188,existing_csv,791.295258131497
-125,788.8623283397853,existing_csv,791.2757946931633
-126,772.3716028590796,existing_csv,791.1257614246389
-127,774.097567471549,existing_csv,790.9916811572917
-128,788.2111402530452,existing_csv,790.9699581814773
-129,800.9872209544445,existing_csv,791.0476113812678
-130,765.6053597067083,existing_csv,790.8519017530018
-131,783.1069459532843,existing_csv,790.792779953004
-132,818.0216283805989,existing_csv,790.9990591077585
-133,806.5828617231602,existing_csv,791.1162305559947
-134,804.665231387651,existing_csv,791.2173425024995
-135,779.3120230828089,existing_csv,791.1291549512425
-136,802.6997115243304,existing_csv,791.2142325731035
-137,784.9510414788683,existing_csv,791.168515849788
-138,798.640768968131,existing_csv,791.222662611515
-139,751.7056646005824,existing_csv,790.9383676617961
-140,798.9758971760483,existing_csv,790.9957785868979
-141,779.2894711148555,existing_csv,790.9127551296494
-142,785.285772134198,existing_csv,790.8731284888363
-143,789.6517857142861,existing_csv,790.864587630273
-144,794.1457346245148,existing_csv,790.8873733732886
-145,792.8016047619046,existing_csv,790.9005749690722
-146,799.5595882471115,existing_csv,790.9598832791958
-147,798.5278795794795,existing_csv,791.0113662472249
-148,790.6951675468366,existing_csv,791.0092297695195
-149,803.9464087082388,existing_csv,791.0960564738062
-150,770.0392170602775,existing_csv,790.9556775443828
-151,779.4821809523809,existing_csv,790.8796941232437
-152,843.804888865202,existing_csv,791.2278861939144
-153,791.3323894287009,existing_csv,791.2285692215928
-154,792.0357142857146,existing_csv,791.2338104233078
-155,776.9230994191369,existing_csv,791.141483255539
-156,786.9503857142859,existing_csv,791.1146172456592
-157,800.9098828245017,existing_csv,791.177007472276
-158,783.868873884741,existing_csv,791.1307534622283
-159,827.5005061938551,existing_csv,791.3594940454461
-160,792.8244798726048,existing_csv,791.3686502068658
-161,792.2900545645472,existing_csv,791.3743732152986
-162,802.066090577789,existing_csv,791.4403714706227
-163,784.0786155889135,existing_csv,791.3952073241092
-164,787.0897407026002,existing_csv,791.368954478856
-165,804.1611107604712,new_batch,791.4464826987446
-166,785.5518077500984,new_batch,791.4109726086925
-167,802.5043975176739,new_batch,791.4774003027584
-168,775.5563138161174,new_batch,791.382631930814
-169,829.4337279230864,new_batch,791.6077863449694
-170,793.4584835817451,new_batch,791.6186727993035
-171,770.0224760904705,new_batch,791.4923792512985
-172,751.0172786274967,new_batch,791.2570588988345
-173,789.9724488038225,new_batch,791.2496334069559
-174,789.0442534199054,new_batch,791.236958809329
-175,780.356688485903,new_batch,791.1747858360525
-176,793.4564611268524,new_batch,791.1877499002047
-177,823.2921619047606,new_batch,791.3691307589875
-178,798.1564709644687,new_batch,791.4072618837374
-179,788.5233833435008,new_batch,791.3911508304401
-180,782.3182959765116,new_batch,791.3407460812515
-181,802.3900769871116,new_batch,791.4017921083557
-182,789.562515243039,new_batch,791.3916861915134
-183,780.2201705848947,new_batch,791.3306396581438
-184,773.2012020904589,new_batch,791.2321101061455
-185,793.5606095238087,new_batch,791.2446965894843
-186,792.8910487670436,new_batch,791.2535479452777
-187,782.6432848534257,new_batch,791.2075037576205
-188,816.5272857142851,new_batch,791.3421834488794
-189,796.636185714285,new_batch,791.3701940428764
-190,790.1362483413338,new_batch,791.3636995918156
-191,804.9167407372448,new_batch,791.4346579224199
-192,766.650890031934,new_batch,791.3055757979904
-193,793.758807111229,new_batch,791.318286841064
-194,780.1605146622612,new_batch,791.2607725514827
-195,813.1627457484669,new_batch,791.3730903627492
-196,769.8449904327802,new_batch,791.2632531182085
-197,792.2396120075441,new_batch,791.2682092547026
-198,792.6862198515429,new_batch,791.2753709243837
-199,804.1046142857127,new_batch,791.3398394839883
-200,834.7227095238086,new_batch,791.5567538341874
+run,peak_electricity_kw,demand_target,source_columns,source_file,cumulative_avg_peak_kw
+1,775.0511695807606,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_01.csv,775.0511695807606
+2,803.753606406608,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_02.csv,789.4023879936843
+3,774.6402118000905,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_03.csv,784.4816625958197
+4,777.4159588940071,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_04.csv,782.7152366703665
+5,770.033158261844,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_05.csv,780.178820988662
+6,818.6493807359246,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_06.csv,786.590580946539
+7,797.127347619047,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_07.csv,788.095833328326
+8,811.9766426416957,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_08.csv,791.0809344924971
+9,761.2042589370266,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_09.csv,787.7613038752227
+10,769.5968086847664,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_10.csv,785.9448543561771
+11,811.2625285714283,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_11.csv,788.2464611030181
+12,791.6763684928524,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_12.csv,788.5322867188376
+13,813.0655060040792,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_13.csv,790.4194574330869
+14,793.7063428571431,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_14.csv,790.6542349633767
+15,781.9080054525366,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_15.csv,790.0711529959874
+16,807.1813733282746,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_16.csv,791.1405417667553
+17,825.0680698642005,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_17.csv,793.1362787136638
+18,768.6929663912456,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_18.csv,791.7783169179739
+19,760.2805460599267,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_19.csv,790.1205395043925
+20,790.8268590420236,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_20.csv,790.155855481274
+21,806.6174174899926,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_21.csv,790.9397393864512
+22,775.8530444090486,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_22.csv,790.253980523842
+23,776.3958433717704,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_23.csv,789.6514528215779
+24,781.9545690329613,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_24.csv,789.3307493303855
+25,786.5086825279026,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_25.csv,789.2178666582862
+26,817.4288031498555,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_26.csv,790.3029026771928
+27,790.3374780702986,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_27.csv,790.3041832473078
+28,783.6548095238094,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_28.csv,790.0667056143258
+29,808.6504285714291,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_29.csv,790.7075236473293
+30,791.9376494782387,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_30.csv,790.748527841693
+31,777.5202380952381,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_31.csv,790.3218088176137
+32,783.1306768787879,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_32.csv,790.0970859445255
+33,794.3479447707019,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_33.csv,790.225899848349
+34,769.3404219057813,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_34.csv,789.6116210853322
+35,769.9759021110925,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_35.csv,789.0506005432112
+36,817.5343547767739,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_36.csv,789.8418159385878
+37,772.7680956060286,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_37.csv,789.3803640377079
+38,802.5951163367132,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_38.csv,789.7281206771554
+39,794.878975290202,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_39.csv,789.8601938723617
+40,773.3216590301706,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_40.csv,789.446730501307
+41,828.0130762676412,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_41.csv,790.3873730809737
+42,775.4538332675533,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_42.csv,790.0318126092255
+43,813.0921912703359,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_43.csv,790.5681004850652
+44,789.0054640099819,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_44.csv,790.5325860197225
+45,810.6453982037767,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_45.csv,790.9795374015904
+46,800.8609388955663,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_46.csv,791.1943504775464
+47,763.9662897766449,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_47.csv,790.6150300371017
+48,777.1527949373922,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_48.csv,790.3345668058578
+49,795.050862178926,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_49.csv,790.4308177318386
+50,792.5049278065148,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_50.csv,790.4722999333322
+51,778.5104518052642,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_51.csv,790.2377538916054
+52,762.016692543388,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_52.csv,789.6950411733704
+53,797.1353540051441,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_53.csv,789.8354244343473
+54,787.4791218245566,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_54.csv,789.7917892008327
+55,773.949892098807,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_55.csv,789.5037547080685
+56,818.0246221127308,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_56.csv,790.0130559117232
+57,780.3252796212173,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_57.csv,789.8430949241705
+58,799.7490573304408,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_58.csv,790.013887379451
+59,794.2922355517413,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_59.csv,790.0864017552525
+60,776.2300228557394,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_60.csv,789.8554621069273
+61,773.3592431164107,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_61.csv,789.5850322874106
+62,824.8822857142861,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_62.csv,790.1543428265538
+63,818.5960117351351,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_63.csv,790.6057978885948
+64,797.0678614768974,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_64.csv,790.706767632162
+65,783.722123144395,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_65.csv,790.5993115631194
+66,769.3311721660607,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_66.csv,790.2770670268004
+67,800.0095058555682,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_67.csv,790.4223273078268
+68,782.8085543918775,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_68.csv,790.3103600590629
+69,784.12263585335,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_69.csv,790.2206828966612
+70,772.3846266554812,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_70.csv,789.9658820932158
+71,824.5753459183644,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_71.csv,790.4533393301897
+72,764.8522312038702,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_72.csv,790.0977683839908
+73,805.5501482448055,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_73.csv,790.3094448204403
+74,790.4401275431748,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_74.csv,790.31121080318
+75,785.4607881443615,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_75.csv,790.2465385010624
+76,790.4251130210648,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_76.csv,790.2488881657993
+77,772.0522347362147,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_77.csv,790.012567991389
+78,788.8372059007071,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_78.csv,789.9974992466367
+79,782.7459011656041,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_79.csv,789.9057068658641
+80,782.3905998724911,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_80.csv,789.811768028447
+81,798.6608383201753,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_81.csv,789.9210158098264
+82,794.6783688419206,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_82.csv,789.9790323102178
+83,793.4220764919402,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_83.csv,790.0205147702385
+84,761.3818716660033,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_84.csv,789.6795785428072
+85,787.4216,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_85.csv,789.6530140893623
+86,775.4465595681633,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_86.csv,789.4878227577206
+87,787.273720759793,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_87.csv,789.4623733094685
+88,826.4768056616829,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_88.csv,789.8829918589254
+89,774.4516524722512,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_89.csv,789.7096060231202
+90,801.112461904762,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_90.csv,789.836304421805
+91,816.6288580149991,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_91.csv,790.1307280876644
+92,793.7801086041665,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_92.csv,790.1703952671916
+93,783.989422561015,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_93.csv,790.103933195082
+94,815.3668245161616,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_94.csv,790.3726873580723
+95,787.6716141412692,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_95.csv,790.3442550084217
+96,789.4303719209121,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_96.csv,790.3347353929267
+97,787.3454314861222,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_97.csv,790.3039178268773
+98,783.9144897038365,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_98.csv,790.2387195807238
+99,786.7792311157158,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_99.csv,790.2037752527945
+100,814.4500780702983,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_100.csv,790.4462382809695
+101,771.5551380952384,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_101.csv,790.2591976850712
+102,795.5758815500524,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_102.csv,790.3113220366886
+103,779.7033376708442,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_103.csv,790.2083318972144
+104,811.0193675596089,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_104.csv,790.4084380093528
+105,791.31656810972,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_105.csv,790.4170868674515
+106,819.5403187753625,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_106.csv,790.691834338281
+107,789.6188485976584,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_107.csv,790.6818064341629
+108,789.4697940780027,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_108.csv,790.6705840975318
+109,809.9175285714284,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_109.csv,790.8471615697695
+110,790.3800006260584,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_110.csv,790.8429146520994
+111,799.8073022812414,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_111.csv,790.9236749010106
+112,815.4855333333333,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_112.csv,791.142977208442
+113,790.5870380952384,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_113.csv,791.1380573932809
+114,809.4477265978542,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_114.csv,791.2986685266543
+115,754.7938492200684,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_115.csv,790.9812353152927
+116,804.0646936903777,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_116.csv,791.0940237495607
+117,794.2213741924555,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_117.csv,791.1207532405256
+118,790.9825335052479,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_118.csv,791.1195818868367
+119,797.9188523809526,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_119.csv,791.1767186136781
+120,784.0258190476192,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_120.csv,791.1171277839609
+121,798.7085658254967,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_121.csv,791.179866941329
+122,804.3133545334714,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_122.csv,791.2875184789694
+123,791.9125589920357,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_123.csv,791.2926001091571
+124,791.6221948793188,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_124.csv,791.295258131497
+125,788.8623283397853,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_125.csv,791.2757946931633
+126,772.3716028590796,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_126.csv,791.1257614246389
+127,774.097567471549,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_127.csv,790.9916811572917
+128,788.2111402530452,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_128.csv,790.9699581814773
+129,800.9872209544445,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_129.csv,791.0476113812678
+130,765.6053597067083,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_130.csv,790.8519017530018
+131,783.1069459532843,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_131.csv,790.792779953004
+132,818.0216283805989,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_132.csv,790.9990591077585
+133,806.5828617231602,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_133.csv,791.1162305559947
+134,804.665231387651,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_134.csv,791.2173425024995
+135,779.3120230828089,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_135.csv,791.1291549512425
+136,802.6997115243304,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_136.csv,791.2142325731035
+137,784.9510414788683,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_137.csv,791.168515849788
+138,798.640768968131,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_138.csv,791.222662611515
+139,751.7056646005824,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_139.csv,790.9383676617961
+140,798.9758971760483,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_140.csv,790.9957785868979
+141,779.2894711148555,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_141.csv,790.9127551296494
+142,785.285772134198,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_142.csv,790.8731284888363
+143,789.6517857142861,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_143.csv,790.864587630273
+144,794.1457346245148,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_144.csv,790.8873733732886
+145,792.8016047619046,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_145.csv,790.9005749690722
+146,799.5595882471115,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_146.csv,790.9598832791958
+147,798.5278795794795,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_147.csv,791.0113662472249
+148,790.6951675468366,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_148.csv,791.0092297695195
+149,803.9464087082388,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_149.csv,791.0960564738062
+150,770.0392170602775,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_150.csv,790.9556775443828
+151,779.4821809523809,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_151.csv,790.8796941232437
+152,843.804888865202,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_152.csv,791.2278861939144
+153,791.3323894287009,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_153.csv,791.2285692215928
+154,792.0357142857146,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_154.csv,791.2338104233078
+155,776.9230994191369,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_155.csv,791.141483255539
+156,786.9503857142859,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_156.csv,791.1146172456592
+157,800.9098828245017,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_157.csv,791.177007472276
+158,783.868873884741,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_158.csv,791.1307534622283
+159,827.5005061938551,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_159.csv,791.3594940454461
+160,792.8244798726048,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_160.csv,791.3686502068658
+161,792.2900545645472,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_161.csv,791.3743732152986
+162,802.066090577789,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_162.csv,791.4403714706227
+163,784.0786155889135,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_163.csv,791.3952073241092
+164,787.0897407026002,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_164.csv,791.368954478856
+165,804.1611107604715,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_165.csv,791.4464826987446
+166,785.5518077500984,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_166.csv,791.4109726086925
+167,802.5043975176744,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_167.csv,791.4774003027584
+168,775.5563138161187,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_168.csv,791.382631930814
+169,829.4337279230872,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_169.csv,791.6077863449694
+170,793.4584835817446,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_170.csv,791.6186727993035
+171,770.0224760904714,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_171.csv,791.4923792512985
+172,751.0172786274975,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_172.csv,791.2570588988345
+173,789.9724488038235,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_173.csv,791.2496334069559
+174,789.0442534199062,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_174.csv,791.2369588093293
+175,780.3566884859033,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_175.csv,791.1747858360525
+176,793.4564611268521,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_176.csv,791.1877499002047
+177,823.2921619047619,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_177.csv,791.3691307589876
+178,798.15647096447,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_178.csv,791.4072618837374
+179,788.523383343501,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_179.csv,791.3911508304401
+180,782.3182959765121,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_180.csv,791.3407460812515
+181,802.3900769871128,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_181.csv,791.4017921083557
+182,789.5625152430397,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_182.csv,791.3916861915134
+183,780.2201705848958,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_183.csv,791.3306396581438
+184,773.2012020904598,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_184.csv,791.2321101061457
+185,793.5606095238097,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_185.csv,791.2446965894843
+186,792.8910487670438,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_186.csv,791.2535479452777
+187,782.6432848534266,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_187.csv,791.2075037576207
+188,816.5272857142858,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_188.csv,791.3421834488796
+189,796.6361857142856,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_189.csv,791.3701940428764
+190,790.1362483413344,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_190.csv,791.3636995918157
+191,804.9167407372452,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_191.csv,791.4346579224201
+192,766.6508900319342,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_192.csv,791.3055757979904
+193,793.7588071112292,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_193.csv,791.3182868410642
+194,780.1605146622619,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_194.csv,791.2607725514827
+195,813.1627457484676,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_195.csv,791.3730903627493
+196,769.8449904327805,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_196.csv,791.2632531182087
+197,792.2396120075445,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_197.csv,791.2682092547027
+198,792.6862198515428,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_198.csv,791.2753709243838
+199,804.1046142857145,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_199.csv,791.3398394839885
+200,834.7227095238094,Aggregated,all_elec_kw_columns,E:\GitHubProjects\LV network\Output Data\Convergence Plot\mc_run_200.csv,791.5567538341876
