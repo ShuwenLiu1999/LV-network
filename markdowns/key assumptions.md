@@ -1,7 +1,7 @@
 # Key Assumptions
 
 ## Scope
-This file captures the reviewed assumptions and experiment definitions for the building-optimization workflow (primarily `Codes/FullEnergyOptimizationDemo11.ipynb` and `Codes/sourcecode/*`).
+This file captures the reviewed assumptions and experiment definitions for the active split building-optimization workflow (primarily `Codes/simulation.ipynb`, `Codes/analysis.ipynb`, and `Codes/sourcecode/*`).
 
 ## Building Optimization Assumptions
 - Building thermal model is single-zone `1R1C` linear dynamics (`Tin` state, parameters `R1`, `C1`, solar gain factor `g`).
@@ -36,7 +36,7 @@ This file captures the reviewed assumptions and experiment definitions for the b
 - Appliance profile values are interpreted as kW and scaled to W when magnitude indicates that unit.
 - Occupancy-specific demand CSV selection uses filename patterns (`occ1..occ5`) with fallback mapping when exactly five files exist.
 
-## Experiment Summary (FullEnergyOptimizationDemo11)
+## Experiment Summary (Active Split Workflow)
 - Baseline MC block (pre-numbered experiments):
   - Runs configured case (`hybrid` or `monovalent`) and selected dwellings.
   - Exports run CSVs and summary plots.
@@ -64,6 +64,17 @@ This file captures the reviewed assumptions and experiment definitions for the b
   - Invalid penetration pairs (`HHP + MHP > 1`) are excluded at sampling stage rather than kept as NaN rows.
   - Peak-demand metric for Experiment 4a is electricity-only; boiler dwellings contribute appliance + EV electric components, while `boiler_gas_kw` is excluded.
   - Reports max-demand statistics and contour visualization over the HHP/MHP plane.
+- Experiment 4b (fixed EV penetration x HHP/MHP/boiler annual gas and CO2 from cache):
+  - Uses cached hybrid and boiler-only per-dwelling breakdowns to sample valid `HHP + MHP + boiler = 1` mixes over the HHP/MHP plane.
+  - MHP dwellings are assumed to contribute zero boiler gas for this gas-only metric.
+  - Annual gas is computed from cached `boiler_gas_kw` time series and the inferred timestep.
+  - Annual CO2 is computed from annual gas using a configurable gas-emission factor; the current default is `0.183 kgCO2/kWh`.
+  - Invalid penetration pairs (`HHP + MHP > 1`) are excluded at sampling stage.
+- Experiment 4c (carbon saving along peak-demand contours):
+  - Combines an Experiment 4a peak-demand surface with an Experiment 4b CO2 surface on the shared HHP/MHP grid.
+  - Samples one or more requested peak-demand contour levels and interpolates CO2 along those contour paths.
+  - Uses the `HHP = 0%, MHP = 0%` point as the baseline CO2 case.
+  - Reports carbon saving as `baseline CO2 - sampled contour CO2`, with both absolute kgCO2 and percentage saving columns.
 - Experiment 5 (cache-based stacked profiles):
   - Generates per-dwelling or all-dwelling stacked demand plots from cache folders.
 - Experiment 6 (randomized daily tariff offsets):

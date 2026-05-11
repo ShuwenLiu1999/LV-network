@@ -15,6 +15,10 @@ This document is the working map of the project structure, model responsibilitie
   - Simulation outputs (batch run CSVs, per-dwelling breakdown files, metrics, plots).
 - `markdowns/`
   - Project documentation, including this file and `key assumptions.md`.
+- `README.md`
+  - Human-facing project entry point and quick orientation.
+- `AGENTS.md`
+  - Root-level operating instructions for future coding-agent sessions.
 - Supporting data folders:
   - `Data_for_CIGRE_Network/`
   - `Modified_116_LV_CSV/`
@@ -27,8 +31,8 @@ This document is the working map of the project structure, model responsibilitie
 
 | Module | What it does | Main inputs | Main outputs | Used by |
 |---|---|---|---|---|
-| `Codes/sourcecode/RC_Optimization.py` | Solves thermal-energy dispatch optimization with Gurobi. Supports hybrid/monovalent heating logic, hot-water modes, EV charging constraints, and day-ahead/full-horizon solve. Builds tariffs for `flat`, `cozy`, and `agile` (Agile electricity from CSV + constant gas price), and allows optional removal of the upper indoor-temperature comfort bound for heating-only studies. | Building RC params (`R1,C1,g`), tariff, weather (`Tout,S`), comfort setpoints/tolerance, device capacities, EV and HW settings | Per-step optimal schedules (`Q_hp_space`, `Q_bo_space`, `Q_hp_hw`, `Q_bo_hw`, `P_ev_charge`, temperatures, storage states) and objective costs | `FullEnergyOptimizationDemo11.ipynb`, `stochastic_baseload_multiple_building_simulation_and_aggregation.py`, demand generation scripts |
-| `Codes/sourcecode/stochastic_baseload_multiple_building_simulation_and_aggregation.py` | Orchestrates end-to-end stochastic simulation workflow for many dwellings. Handles profile sampling by occupancy, EV travel synthesis, Monte Carlo runs, run aggregation, summary plots, EV-power sweep experiments, per-dwelling breakdown export, and cache-based penetration studies. Supports optional on-the-fly homogeneous EV profile generation to replace cached EV components, explicit per-pixel tqdm progress updates, randomized-tariff-offset MC workflows (`hybrid`/`monovalent`/`boiler_only`), and fixed-EV penetration sweeps over mixed `HHP`/`MHP`/`boiler` shares using three cache folders (`hybrid`/`monovalent`/`boiler_only`) with electricity-only peak-demand aggregation in Experiment 4a. | Metadata CSV, weather CSV, stochastic demand profiles, configuration dictionaries (`optim_params_cfg`, `ev_params_cfg`, `hw_params_cfg`), cached single-dwelling breakdown folders (`hybrid`/`monovalent`/`boiler_only`), optional EV-generation parameter dictionary | Monte Carlo result dicts, run CSVs (optional), aggregated curves, summary tables, per-dwelling breakdown CSV, penetration-grid maximum-demand summary table, contour-plot-ready surface table | `Codes/FullEnergyOptimizationDemo11.ipynb` |
+| `Codes/sourcecode/RC_Optimization.py` | Solves thermal-energy dispatch optimization with Gurobi. Supports hybrid/monovalent heating logic, hot-water modes, EV charging constraints, and day-ahead/full-horizon solve. Builds tariffs for `flat`, `cozy`, and `agile` (Agile electricity from CSV + constant gas price), and allows optional removal of the upper indoor-temperature comfort bound for heating-only studies. | Building RC params (`R1,C1,g`), tariff, weather (`Tout,S`), comfort setpoints/tolerance, device capacities, EV and HW settings | Per-step optimal schedules (`Q_hp_space`, `Q_bo_space`, `Q_hp_hw`, `Q_bo_hw`, `P_ev_charge`, temperatures, storage states) and objective costs | `Codes/simulation.ipynb`, `Codes/analysis.ipynb`, `stochastic_baseload_multiple_building_simulation_and_aggregation.py`, demand generation scripts |
+| `Codes/sourcecode/stochastic_baseload_multiple_building_simulation_and_aggregation.py` | Orchestrates end-to-end stochastic simulation workflow for many dwellings. Handles profile sampling by occupancy, EV travel synthesis, Monte Carlo runs, run aggregation, summary plots, EV-power sweep experiments, per-dwelling breakdown export, and cache-based penetration studies. Supports optional on-the-fly homogeneous EV profile generation to replace cached EV components, explicit per-pixel tqdm progress updates, randomized-tariff-offset MC workflows (`hybrid`/`monovalent`/`boiler_only`), fixed-EV penetration sweeps over mixed `HHP`/`MHP`/`boiler` shares with electricity-only peak-demand aggregation in Experiment 4a, and fixed-EV annual gas/CO2 sweeps in Experiment 4b. | Metadata CSV, weather CSV, stochastic demand profiles, configuration dictionaries (`optim_params_cfg`, `ev_params_cfg`, `hw_params_cfg`), cached single-dwelling breakdown folders (`hybrid`/`monovalent`/`boiler_only`), optional EV-generation parameter dictionary | Monte Carlo result dicts, run CSVs (optional), aggregated curves, summary tables, per-dwelling breakdown CSV, penetration-grid maximum-demand summary table, annual gas/CO2 sweep table, contour-plot-ready surface tables | `Codes/simulation.ipynb`, `Codes/analysis.ipynb` |
 
 ### Network simulation and aggregation
 
@@ -47,31 +51,53 @@ This document is the working map of the project structure, model responsibilitie
 | `Codes/sourcecode/generate_demand_metrics.py` | Aggregates generated demand profiles into reporting metrics (peak window, total electricity, total gas) and joins thermal params. | Demand profile folders + summary file | `demand_metrics_summary.csv` | `analyze_peak_reduction.py`, reporting |
 | `Codes/sourcecode/analyze_peak_reduction.py` | Computes peak-demand reduction (Flat -> ToU, extreme weather), derives thermal/HTC and HP heat-share indicators, and produces hist/scatter visualizations. | Metrics CSV or recomputed metrics | Processed reduction table and plots | Post-analysis notebooks/scripts |
 
+### Notebook workflow utilities
+
+| Module | What it does | Main inputs | Main outputs | Used by |
+|---|---|---|---|---|
+| `Codes/sourcecode/notebook_workflow.py` | Centralizes notebook repository-root detection, canonical path bundles, output-directory creation, and compact path-status printing. | Notebook working directory or repo root | `NotebookPaths` bundle and normalized output directories | `Codes/simulation.ipynb`, `Codes/analysis.ipynb`, `Codes/Plotting illustration.ipynb` |
+| `Codes/sourcecode/artifact_naming.py` | Provides shared filename-token helpers for percentages, grids, contour levels, EV-case labels, tariff-offset labels, and natural sorting. | Numeric scenario values, labels, paths | Stable filename/path tokens | `Codes/analysis.ipynb`, `Codes/Plotting illustration.ipynb` |
+| `Codes/sourcecode/plotting_style.py` | Provides shared white-background Matplotlib styling, stack-plot colors, axis cleanup, and high-contrast legend helpers. | Matplotlib axes/legend objects | Styled plots and reusable color dictionaries | `Codes/Plotting illustration.ipynb`; available to analysis sections |
+| `Codes/sourcecode/simulation_instance_runner.py` | Runs simulation notebook instances by expanding list-valued case/EV/offset fields, slicing context date windows, applying tariff settings, handling per-dwelling cache continuation, and writing manifest rows. | Base workflow context, `simulation_defaults`, `simulation_instances` | Per-instance output folders, per-dwelling breakdown files, optional aggregate artifacts, and simulation instance manifest CSVs | `Codes/simulation.ipynb` |
+
 ## 3) Notebook role map
+
+`Codes/FullEnergyOptimizationDemo11.ipynb` was the former combined experiment notebook. It is no longer present in the current working tree; the active workflow is split between `Codes/simulation.ipynb` and `Codes/analysis.ipynb`.
 
 | Notebook | Role |
 |---|---|
-| `Codes/FullEnergyOptimizationDemo11.ipynb` | Primary experiment notebook: workflow setup, MC runs, MHP/HHP sweeps, single/all-dwelling breakdown runs, convergence analytics, cache-based EV-penetration x HHP-share maximum-demand sweep, fixed-EV penetration x (`HHP`,`MHP`,`boiler`) share sweep (with `HHP+MHP<=100%`), randomized cozy-tariff offset scans across hybrid/monovalent/boiler-only cases, and post-scan energy-cost component summarization from randomized-offset breakdown outputs (HP/EV/baseload electricity + gas) with case-wise component-cost vs peak-demand plots. |
-| `Codes/simulation.ipynb` | Simulation-only notebook split from `FullEnergyOptimizationDemo11.ipynb`: setup/context build, baseline MC execution, Experiment 1/2 run generation, and a unified Experiment 6 runner that covers both randomized-offset scans and Experiment 3-equivalent single-case runs (including `flat`/`cozy`/`agile` tariffs). Exports run-manifest CSV artifacts and avoids plotting/post-processing cells. |
-| `Codes/analysis.ipynb` | Analysis-only notebook split from `FullEnergyOptimizationDemo11.ipynb`: file-driven follow-up calculations/visualization with per-section dataset-selection cells placed immediately before each analysis block. Runs in ordered workflow (baseline, Exp1, Exp2, Exp3a, Exp4-family generation, Exp4-pre, Exp4, Exp4a, Exp5, Exp6a, Exp6b, Exp6c), including Exp4-family cache-based generation (pre-check + Exp4 + Exp4a) from existing run outputs and gas-consumption post-analysis for HHP vs pure boiler with run-feasibility pre-check and dwelling-average component histograms. |
+| `Codes/simulation.ipynb` | Active run-generation notebook: setup/context build and instance-based simulation execution. Each run is specified through `simulation_instances` with case type, tariff, tariff offset, EV charger power, date window, dwelling selection, run count, continuation behavior, and output location. Uses `simulation_instance_runner.py` for per-dwelling cache and aggregate-batch execution. Technology-penetration variables are intentionally excluded from this notebook and handled later in `analysis.ipynb`. |
+| `Codes/analysis.ipynb` | Active post-processing and cache-analysis notebook: file-driven follow-up calculations/visualization with per-section dataset-selection cells placed immediately before each analysis block. Runs in ordered workflow (baseline, Exp1, Exp2, Exp3a, Exp4-family generation, Exp4-pre, Exp4, Exp4a, Exp4b, Exp4c, Exp5, Exp6a, Exp6b, Exp6c), including cache-based generation from existing run outputs, annual gas/CO2 sweeps, carbon-saving line plots along peak-demand contours with multi-EV-case overlays, highest-saving segment selection, and inset percentage-change tables, plus gas-consumption post-analysis for HHP vs pure boiler. Shared path and artifact-tag helpers now live in `notebook_workflow.py` and `artifact_naming.py`. |
 | `Codes/Diagnose_HHP_Infeasibility.ipynb` | Replays infeasible cached Experiment 6 `(dwelling, run)` cases and applies A/B relaxation tests (EV targets vs thermal constraints), plus capacity-limit relaxations (EV charge-cap lift and monovalent HP-cap lift), to classify likely infeasibility drivers and export diagnosis summaries including selected feasible HP capacities. |
 | `Codes/Generate_Occupancy_based_demand_with_CREST_model.ipynb` | Demand profile generation and occupancy-linked preprocessing. |
 | `Codes/Data Preprocessing.ipynb` | Data cleaning/transformation utilities. |
-| `Codes/Main.ipynb`, `Codes/Test.ipynb`, `Codes/IEA_Con_Result_Analysis.ipynb` | Scenario assembly, experimentation, and result analysis utilities. |
+| `Codes/Calculate_Demand_batch.ipynb` | Batch demand-profile generation wrapper around source modules. |
+| `Codes/Plotting illustration.ipynb` | Figure-generation and illustration notebook for cached experiment outputs, including Experiment 4 single-pixel aggregate electricity stack plots by tariff-offset case and EV-charger-capacity peak-demand sweeps from parameterized `Output Data/Simulation Cache` folders. Uses shared notebook path setup, artifact naming, and plotting-style helpers so presentation cells stay focused on figure choices. |
+| `Codes/playground.ipynb` | Scratchpad notebook for small plotting/data checks. |
+| `Codes/Main.ipynb`, `Codes/Test.ipynb`, `Codes/IEA_Con_Result_Analysis.ipynb` | Older scenario assembly, experimentation, and result analysis utilities. |
+| `Codes/sourcecode/resul_analysis_Network.ipynb` | Legacy network-result analysis notebook. |
 
 ## 4) Output contracts
 
 - Batch run file (when enabled): `Output Data/<subdir>/mc_run_XX.csv`
 - Per-dwelling run breakdown: `Output Data/<subdir>/dwelling_<id>_runs_breakdown.csv`
+- Simulation bottom-level output folders generated by `simulation_instance_runner.py` use parameterized names:
+  `cache_or_batch_tariff-<tariff>_case-<case>_EV<kW>kW_offset<h>h_start<YYYYMMDD>_days<N>_runs<N>_seed<N>_dw<selection>`.
+- Simulation instance manifest: `Output Data/<subdir-or-group>/simulation_instance_manifest.csv` (one row per aggregate instance or per dwelling-cache instance, including case, tariff, EV charger power, tariff offset, date window/run counts, continuation status, `output_folder`, `output_subdir`, full output path, and status counts)
 - Optional per-dwelling metrics: `..._run_metrics.csv`
 - Optional convergence plots: `..._convergence.png`
 - Optional per-dwelling stacked consumption plots: `Output Data/<subdir>/plots/exp5_cache_stackplots/<case>/dwelling_<id>_stacked_consumption.png`
 - Optional aggregate stacked consumption plot: `Output Data/<subdir>/plots/exp5_cache_stackplots/<case>/aggregate_stacked_consumption.png`
 - Experiment 3a aggregated demand + tariff plot: `Output Data/plots/exp3a_scenario_<scenario>_cases_<casegroup>_<N>cases_plot_stacked_demand_with_tariffs.png`
-- Penetration sweep summary table: `Output Data/<subdir>/ev_hhp_penetration_max_demand.csv`
-- Penetration contour plot: `Output Data/<subdir>/ev_hhp_penetration_contour_max_demand.png`
-- Experiment 4a fixed-EV penetration sweep summary table: `Output Data/<subdir>/evconst_hhp_mhp_boiler_penetration_max_demand.csv` (peak metric is electricity-only)
-- Experiment 4a contour plot (`x=MHP%`, `y=HHP%`, `z=max demand`): `Output Data/<subdir>/evconst_hhp_mhp_boiler_penetration_contour_max_demand.png`
+- Experiment 4-family CSV outputs are written under `Output Data/<subdir>/csv/`; Experiment 4-family plots are written under `Output Data/<subdir>/plots/`.
+- Experiment 4 pre-check convergence CSV/plot filenames include fixed EV penetration, fixed HHP penetration, run count, random seed, and EV-source tag.
+- Experiment 4 EV/HHP sweep CSV filename includes EV range, grid resolution, run count, random seed, and EV-source tag; the contour plot filename additionally includes the plotted metric.
+- Experiment 4a fixed-EV HHP/MHP/boiler sweep CSV filename includes fixed EV penetration, residual-boiler tag, grid resolution, run count, random seed, and EV-source tag; the contour plot filename additionally includes the plotted metric and highlighted peak levels.
+- Experiment 4b annual gas/CO2 sweep CSV filename includes fixed EV penetration, residual-boiler tag, grid resolution, run count, random seed, and CO2 factor; gas and CO2 contour plot filenames additionally include the plotted metric.
+- Experiment 4 single-pixel aggregate electricity stack plot from `Codes/Plotting illustration.ipynb`: `Output Data/plots/exp4_single_pixel_electricity_stack_simcache_by_tariff_offset_ci95.png`; the plotting cell discovers parameterized `Output Data/Simulation Cache/cache_tariff-..._case-..._EV..._offset...` folders from tariff, case, EV charger power, and tariff-offset variables, then renders one subplot per tariff-offset case.
+- Experiment 4 EV-capacity peak-demand sweep plot from `Codes/Plotting illustration.ipynb`: `Output Data/plots/exp4_ev_capacity_sweep_peak_p97p5_tariff-<tariff>_evkw<min>-<max>_ev100_hhp50_mhp50_offsets<offset-tags>.png`; the plotting cell keeps EV penetration at 100%, mixes HHP/MHP 50/50, compares 0 h and 2 h offsets, and plots P97.5 of MC aggregate peak demand over EV charger capacity.
+- Experiment 4c sampled peak-contour CO2/carbon-saving CSV filename includes EV case labels, requested peak levels, peak metric, CO2 metric, x-axis, best-carbon-segment tag, and tCO2 unit tag; rows include case labels/source CSVs and retain only the contour segment with the highest mean carbon saving when a requested peak contour splits into multiple segments.
+- Experiment 4c carbon-saving line plot filename uses the same key tags as the Experiment 4c sampled CSV; the plot can overlay multiple EV-case peak-demand CSVs, displays carbon saving in tCO2, uses color for EV case and linestyle for peak-contour level, and includes a numbered inset legend table with columns `Case`, `EV %`, `Peak kW`, `HHP%`, and `Additional Saving`.
 - Experiment 6a electricity/gas/energy-cost summary: `Output Data/Single Dwelling Runs/randomized offset/exp6a_energy_cost_summary.csv` (includes infeasible-handling counters when infeasible run curves are replaced by feasible-run mean dwelling curves; includes component breakdown columns for HP electricity, EV electricity, baseload electricity, and gas costs/energy; peak/cost statistics are estimated from dwelling-level resampling replicates; includes 95% CI bound columns for mean peak demand, total energy cost, and component costs used in the grouped bar chart; `peak_extreme_demand_*` bound columns are point-equal boundaries because extreme peak is reported as an extreme overlay)
 - Experiment 6a plot outputs:
   - `Output Data/plots/exp6a_scenario_<scenario>_cases_<casegroup>_tariff_<tarifffilter>_plot_component_cost_with_peak_mean.png`
@@ -124,7 +150,31 @@ This document is the working map of the project structure, model responsibilitie
 - Add straightforward and concise comments for key variables/functions and the purpose of each code block.
 - Keep comments practical and minimal: explain intent and usage, not obvious syntax.
 
+### D) Cross-chat maintenance standard
+
+- Keep `README.md` as the human-facing project entry point.
+- Keep `AGENTS.md` as the root-level agent entry point; it should point future coding-agent sessions back to this file.
+- Keep `markdowns/chat_handoff.md` current when active workflow state, staged/unstaged work, or handoff instructions materially change.
+- In a fresh chat, the first working step must still be to re-open `markdowns/main.md`; `AGENTS.md` and `chat_handoff.md` are reminders, not replacements for this file.
+
 ## 6) Structure change log
+
+- `2026-05-11`:
+  - Refreshed documentation entry points with a human-facing `README.md`, root-level `AGENTS.md`, and `markdowns/chat_handoff.md` for cross-chat continuity.
+  - Updated the active notebook map to treat `Codes/simulation.ipynb` and `Codes/analysis.ipynb` as the current split workflow, with `Codes/FullEnergyOptimizationDemo11.ipynb` no longer present in the working tree.
+  - Documented Experiment 4b annual gas/CO2 cache sweeps and Experiment 4c carbon-saving analysis outputs in the module catalog, notebook role map, and output contracts.
+  - Added cross-chat maintenance rules to keep future agent sessions aligned with `markdowns/main.md`.
+  - Updated `Codes/analysis.ipynb` Experiment 4c so split peak-demand contours keep only the segment with the highest mean carbon saving, and so multiple EV-case peak-demand CSVs (for example 10% and 40% EV) can be overlaid in the same carbon-saving plot.
+  - Updated `Codes/analysis.ipynb` Experiment 4c carbon-saving plot to include an inset table summarizing each plotted line's percentage increase from near-0% HHP to max HHP.
+  - Refined `Codes/analysis.ipynb` Experiment 4c plot styling: table text is forced to high-contrast black, carbon saving is plotted in tCO2, and legends explicitly map color to EV case and linestyle to peak-contour level.
+  - Updated `Codes/analysis.ipynb` Experiment 4c inset legend table to number plotted cases and show separate `EV %`, `Peak kW`, `HHP%`, and `Additional Saving` columns.
+  - Updated `Codes/analysis.ipynb` Experiment 4-family output paths so CSV files write under `Output Data/Penetration Sweep/csv/`, plots write under `Output Data/Penetration Sweep/plots/`, and filenames include key scenario variables while omitting HHP/MHP range tags.
+  - Updated `Codes/Plotting illustration.ipynb` Experiment 4 single-pixel aggregate electricity stack plot so it can render multiple tariff-offset cases as subplots from `exp4_pixel_tariff_offset_cases`.
+  - Updated `Codes/Plotting illustration.ipynb` Experiment 4 single-pixel aggregate electricity stack plot to discover the new parameterized `Output Data/Simulation Cache` folders by tariff, case, EV charger power, and tariff offset, with optional run/seed/dwelling-selection filters and an updated `simcache` output filename.
+  - Added a `Codes/Plotting illustration.ipynb` Experiment 4 EV-capacity sweep plot that keeps EV penetration at 100%, HHP/MHP at 50/50, compares 0 h and 2 h tariff offsets, and plots P97.5 of aggregate peak demand against EV charger capacity from Simulation Cache folders.
+  - Streamlined the three active notebooks by adding shared setup/artifact/style modules (`notebook_workflow.py`, `artifact_naming.py`, `plotting_style.py`), updating notebook opening contracts, and moving repeated path, filename-token, and plotting-style glue out of notebook cells.
+  - Tidied `Codes/simulation.ipynb` into an instance-driven runner: separate model defaults from run instances, preview expanded plans before execution, gate expensive execution with `run_simulation_now`, and move continuation/output/manifest plumbing into `Codes/sourcecode/simulation_instance_runner.py`.
+  - Updated simulation instance output naming so generated bottom-level output folders encode the key run parameters (`mode`, tariff, case, EV charger power or EV-off state, tariff offset, start date, duration, target runs, seed, and dwelling selection), with `output_folder` and `output_subdir` recorded in the preview table and manifest.
 
 - `2026-04-21`:
   - Added optimizer flag `enforce_upper_comfort_bound` in `Codes/sourcecode/RC_Optimization.py` so the upper indoor-temperature comfort bound can be disabled while preserving the lower bound.
