@@ -1,6 +1,6 @@
 # Chat Handoff
 
-Last updated: 2026-05-11 22:25:24 +01:00
+Last updated: 2026-06-03 14:17:52 +01:00
 
 ## Start Procedure
 
@@ -29,19 +29,16 @@ For any fresh chat or resumed agent session:
 - `Codes/analysis.ipynb` Experiment 4c now supports overlaying multiple EV-case peak-demand CSVs in one carbon-saving plot; default cases are 10% EV and 40% EV. When a requested peak-demand contour has multiple segments, the analysis keeps only the segment with the highest mean carbon saving. The plot shows carbon saving in tCO2, maps color to EV case and linestyle to peak-contour level, and includes a high-contrast numbered inset legend table with columns `Case`, `EV %`, `Peak kW`, `HHP%`, and `Additional Saving`.
 - Experiment 4-family outputs in `Codes/analysis.ipynb` now write CSV artifacts under `Output Data/Penetration Sweep/csv/` and plot artifacts under `Output Data/Penetration Sweep/plots/`. Filenames include key variables such as EV penetration/range, grid size, run count, seed, EV source, metric, highlighted peak levels, CO2 factor, Exp 4c EV cases, and Exp 4c axis/segment/unit tags; HHP/MHP range tags are intentionally omitted.
 - `Codes/Plotting illustration.ipynb` Experiment 4 single-pixel aggregate electricity stack plot now discovers parameterized `Output Data/Simulation Cache/cache_tariff-..._case-..._EV..._offset...` folders from tariff, case, EV charger power, and tariff-offset variables, then renders one subplot per tariff-offset case. The current defaults use agile, 5 kW EV, `0` and `2` hour offsets, with optional run/seed/dwelling-selection filters, and save to `Output Data/plots/exp4_single_pixel_electricity_stack_simcache_by_tariff_offset_ci95.png` when run.
+- `Codes/Plotting illustration.ipynb` now includes an Applied Energy mechanism-figure block immediately after the existing single-dwelling optimisation plot block. It uses cached `offset_2h_winter_7d_case` HHP/MHP dwelling breakdowns, selects high-/low-thermal-resistance representative dwellings, and saves HHP/MHP compact mechanism figures plus metadata under `outputs/paper_figures/revised_single_dwelling/`.
 - `Codes/Plotting illustration.ipynb` now also has an Experiment 4 EV-capacity sweep plot immediately after the single-pixel stack plot. It keeps EV penetration at 100%, HHP/MHP at 50/50, compares `0` and `2` hour offsets, sweeps EV charger capacity `[3, 5, 7, 9, 11]` kW from `Output Data/Simulation Cache`, and plots P97.5 of MC aggregate peak demand. It saves to `Output Data/plots/exp4_ev_capacity_sweep_peak_p97p5_tariff-agile_evkw3-11_ev100_hhp50_mhp50_offsets0p0h_2p0h.png` when run.
 
 ## Observed Working Tree State
 
-Observed at 2026-05-11 16:42:00 +01:00:
+Observed at 2026-06-03 14:17:52 +01:00:
 
-- Staged deletion: `Codes/FullEnergyOptimizationDemo11.ipynb`.
-- Unstaged notebook changes: `Codes/simulation.ipynb`, `Codes/analysis.ipynb`, and `Codes/Plotting illustration.ipynb`.
-- Untracked helper modules: `Codes/sourcecode/notebook_workflow.py`, `Codes/sourcecode/artifact_naming.py`, `Codes/sourcecode/plotting_style.py`, and `Codes/sourcecode/simulation_instance_runner.py`.
-- Unstaged generated-output changes:
-  - `Codes/Output/DemandProfiles/figures/1/hp_heat_proportion_hist_hhp.png`
-  - `Output Data/Penetration Sweep/exp4c_peak_contour_carbon_saving_line.png`
-  - `Output Data/Penetration Sweep/exp4c_peak_contour_co2_samples.csv`
+- Unstaged notebook change: `Codes/Plotting illustration.ipynb`.
+- Unstaged documentation changes: `markdowns/main.md` and `markdowns/chat_handoff.md`.
+- No staged changes observed.
 
 Re-check this state in future sessions because it may change outside this handoff file.
 

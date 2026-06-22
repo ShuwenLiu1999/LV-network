@@ -72,7 +72,7 @@ This document is the working map of the project structure, model responsibilitie
 | `Codes/Generate_Occupancy_based_demand_with_CREST_model.ipynb` | Demand profile generation and occupancy-linked preprocessing. |
 | `Codes/Data Preprocessing.ipynb` | Data cleaning/transformation utilities. |
 | `Codes/Calculate_Demand_batch.ipynb` | Batch demand-profile generation wrapper around source modules. |
-| `Codes/Plotting illustration.ipynb` | Figure-generation and illustration notebook for cached experiment outputs, including Experiment 4 single-pixel aggregate electricity stack plots by tariff-offset case and EV-charger-capacity peak-demand sweeps from parameterized `Output Data/Simulation Cache` folders. Uses shared notebook path setup, artifact naming, and plotting-style helpers so presentation cells stay focused on figure choices. |
+| `Codes/Plotting illustration.ipynb` | Figure-generation and illustration notebook for cached experiment outputs, including Applied Energy mechanism figures for representative high-/low-thermal-resistance HHP and MHP dwellings, Experiment 4 single-pixel aggregate electricity stack plots by tariff-offset case, and EV-charger-capacity peak-demand sweeps from parameterized `Output Data/Simulation Cache` folders. Uses shared notebook path setup, artifact naming, and plotting-style helpers so presentation cells stay focused on figure choices. |
 | `Codes/playground.ipynb` | Scratchpad notebook for small plotting/data checks. |
 | `Codes/Main.ipynb`, `Codes/Test.ipynb`, `Codes/IEA_Con_Result_Analysis.ipynb` | Older scenario assembly, experimentation, and result analysis utilities. |
 | `Codes/sourcecode/resul_analysis_Network.ipynb` | Legacy network-result analysis notebook. |
@@ -95,6 +95,7 @@ This document is the working map of the project structure, model responsibilitie
 - Experiment 4a fixed-EV HHP/MHP/boiler sweep CSV filename includes fixed EV penetration, residual-boiler tag, grid resolution, run count, random seed, and EV-source tag; the contour plot filename additionally includes the plotted metric and highlighted peak levels.
 - Experiment 4b annual gas/CO2 sweep CSV filename includes fixed EV penetration, residual-boiler tag, grid resolution, run count, random seed, and CO2 factor; gas and CO2 contour plot filenames additionally include the plotted metric.
 - Experiment 4 single-pixel aggregate electricity stack plot from `Codes/Plotting illustration.ipynb`: `Output Data/plots/exp4_single_pixel_electricity_stack_simcache_by_tariff_offset_ci95.png`; the plotting cell discovers parameterized `Output Data/Simulation Cache/cache_tariff-..._case-..._EV..._offset...` folders from tariff, case, EV charger power, and tariff-offset variables, then renders one subplot per tariff-offset case.
+- Applied Energy mechanism figures from `Codes/Plotting illustration.ipynb`: `outputs/paper_figures/revised_single_dwelling/fig_hhp_high_low_resistance.{png,svg,pdf}` and `outputs/paper_figures/revised_single_dwelling/fig_mhp_high_low_resistance.{png,svg,pdf}`; metadata is saved as `outputs/paper_figures/revised_single_dwelling/mechanism_figure_metadata.csv` and `.json`.
 - Experiment 4 EV-capacity peak-demand sweep plot from `Codes/Plotting illustration.ipynb`: `Output Data/plots/exp4_ev_capacity_sweep_peak_p97p5_tariff-<tariff>_evkw<min>-<max>_ev100_hhp50_mhp50_offsets<offset-tags>.png`; the plotting cell keeps EV penetration at 100%, mixes HHP/MHP 50/50, compares 0 h and 2 h offsets, and plots P97.5 of MC aggregate peak demand over EV charger capacity.
 - Experiment 4c sampled peak-contour CO2/carbon-saving CSV filename includes EV case labels, requested peak levels, peak metric, CO2 metric, x-axis, best-carbon-segment tag, and tCO2 unit tag; rows include case labels/source CSVs and retain only the contour segment with the highest mean carbon saving when a requested peak contour splits into multiple segments.
 - Experiment 4c carbon-saving line plot filename uses the same key tags as the Experiment 4c sampled CSV; the plot can overlay multiple EV-case peak-demand CSVs, displays carbon saving in tCO2, uses color for EV case and linestyle for peak-contour level, and includes a numbered inset legend table with columns `Case`, `EV %`, `Peak kW`, `HHP%`, and `Additional Saving`.
@@ -158,6 +159,10 @@ This document is the working map of the project structure, model responsibilitie
 - In a fresh chat, the first working step must still be to re-open `markdowns/main.md`; `AGENTS.md` and `chat_handoff.md` are reminders, not replacements for this file.
 
 ## 6) Structure change log
+
+- `2026-06-03`:
+  - Added an Applied Energy mechanism-figure block to `Codes/Plotting illustration.ipynb` directly after the existing single-dwelling optimisation plotting block.
+  - The new block loads cached HHP/MHP per-dwelling breakdown CSVs, selects representative high-/low-thermal-resistance dwellings, plots compact 2-column x 2-row HHP and MHP operation figures, and saves PNG/SVG/PDF outputs plus CSV/JSON metadata under `outputs/paper_figures/revised_single_dwelling/`.
 
 - `2026-05-11`:
   - Refreshed documentation entry points with a human-facing `README.md`, root-level `AGENTS.md`, and `markdowns/chat_handoff.md` for cross-chat continuity.
